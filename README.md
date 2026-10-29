@@ -8,6 +8,12 @@ fresh laptop checkout to downloading and grading a real model's answers.
 The inference image and a real lab checkpoint still need to be tested on your NRP
 namespace. Start with the pilot below before scheduling the full suite.
 
+**Lab datasets are already on NRP:** teammates in `wang-research-lab` can reuse
+`shared-pvc` at `math-eval/suites/math-five` (full) and `math-eval/suites/pilot`.
+Follow [the shared-suite instructions](docs/nrp-shared-suites.md) to obtain the
+matching local grading copy and skip dataset preparation/upload. Model and image
+setup, generation, and grading are still needed.
+
 | Benchmark | Selection | Questions |
 | --- | --- | ---: |
 | MATH-500 | Test split | 500 |
@@ -153,6 +159,18 @@ export MATH_EVAL_UPLOAD_MODEL='0'
 | `MATH_EVAL_OUTPUT_PVC` + `MATH_EVAL_OUTPUT_REL` | PVC and relative directory receiving unique evaluation runs |
 | `MATH_EVAL_UPLOAD_MODEL` | Keep `0` to read an existing model; use `1` only when uploading a completed local export |
 
+For the lab's existing shared datasets, override these values after editing the
+settings block above:
+
+```bash
+export MATH_EVAL_NAMESPACE='wang-research-lab'
+export MATH_EVAL_SUITE_PVC='shared-pvc'
+```
+
+Use the [shared-suite guide](docs/nrp-shared-suites.md) for the local grading copy.
+Keep your model/output settings appropriate to your run; the suite claim is
+already provisioned and populated.
+
 The three PVC settings may name the same claim. A claim in a different namespace
 cannot be mounted directly by this Job. PVC names are not laptop folders.
 These exports configure the documentation commands; the CLI does not automatically
@@ -194,7 +212,14 @@ If the model is already on NRP, reuse that PVC and determine its relative path.
 For example, a training pod mounting a claim at `/data` and a model saved at
 `/data/runs/model-v1` means `MATH_EVAL_MODEL_REL='runs/model-v1'`.
 
-Prepare a ten-question pilot and the full suite **on your laptop**:
+**Reusing the lab upload:** the suites are already prepared. Follow
+[the shared-suite guide](docs/nrp-shared-suites.md) to download their exact local
+copies, skip the two `prepare` commands below, and then validate them here.
+Also skip the upload subsection in section 6. Continue configuring your model,
+inference image, and output storage normally.
+
+For a new independent setup, prepare a ten-question pilot and the full suite
+**on your laptop**:
 
 ```bash
 uv run --no-sync math-eval prepare --output suites/pilot --limit 2
@@ -391,6 +416,10 @@ use the troubleshooting section before continuing. The server dry run validates
 API fields and admission rules; it does not prove the image or storage will work.
 
 ### Upload the suites
+
+**Skip this subsection when reusing the lab's verified upload on `shared-pvc`.**
+Use the existing `math-eval/suites/pilot` and `math-eval/suites/math-five` paths.
+The model/output checks later in this section still apply.
 
 Use one archive to transfer the many task files. `COPYFILE_DISABLE=1` avoids
 adding macOS metadata files that would change the suite's file inventory.
