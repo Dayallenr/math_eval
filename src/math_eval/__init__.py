@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from math-eval!")
+"""Reproducible math benchmark preparation, checkpoint inference, and Harbor grading."""

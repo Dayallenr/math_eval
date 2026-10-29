@@ -1,0 +1,19 @@
+schema_version = "1.4"
+
+[task]
+name = "local/aime-2026-001"
+
+[metadata]
+dataset = "MathArena/aime_2026"
+source_revision = "d61f486805306e6e6b5913504c07763a99e1b112"
+problem_idx = 1
+problem_sha256 = "4d866680f9238c0ae6b14d41fc7250d041d6c5073ed167b043ff1d059a7f7252"
+
+[agent]
+timeout_sec = 1200.0
+
+[verifier]
+timeout_sec = 30.0
+
+[environment]
+build_timeout_sec = 300.0

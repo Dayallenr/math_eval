@@ -1,0 +1,13 @@
+# Local environments and credentials
+.venv/
+.env
+
+# Python and tool caches
+__pycache__/
+*.py[cod]
+.cache/
+
+# Generated benchmark tasks and evaluation output
+suites/
+runs/
+jobs/
