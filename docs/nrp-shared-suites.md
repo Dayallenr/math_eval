@@ -19,43 +19,51 @@ The full suite contains 1,437 questions: MATH-500 500, AIME 2026 30, HMMT Februa
 2026 33, OlympiadBench 674, and OlymMATH 200. The pilot contains two per benchmark,
 ten total. [The checked upload receipt](nrp-shared-suites.json) records the hashes.
 
-This setup only prepares benchmark storage. The inference image, exported model,
-GPU Job, result download, and grading still need to be configured/run. GPU loading
-with an actual lab checkpoint has not been validated by uploading these files.
+## Default: generation and Harbor grading on NRP
 
-## Use the existing storage for generation
+Use the [automatic NRP workflow](../README.md). Copy `nrp.example.toml` to
+`nrp.toml` and configure the published runner/task images and pull Secret. Keep
+these already-uploaded settings:
 
-Install the local tools and authenticate as described in
-[README sections 1 and 2](../README.md#1-install-local-tools). Namespace membership
-is required; another namespace cannot directly mount this claim. From the repo
-root, use these suite settings when following the README:
-
-```bash
-export MATH_EVAL_NAMESPACE='wang-research-lab'
-export MATH_EVAL_SUITE_PVC='shared-pvc'
-export MATH_EVAL_SUITE_REL='math-eval/suites/pilot'
+```toml
+namespace = "wang-research-lab"
+suite_pvc = "shared-pvc"
+output_pvc = "shared-pvc"
+suite_archive = "math-eval/archives/math-five-51ba33d52138-pilot-65433b136342.tgz"
 ```
 
-Keep the model PVC/path, image, and output PVC/path appropriate to your checkpoint.
-The renderer's existing `--suite-pvc "$MATH_EVAL_SUITE_PVC"` and
-`--suite-relative-path "$MATH_EVAL_SUITE_REL"` arguments select the stored pilot.
-For the full run, change only the suite selection and use a newly named Job:
+Keep the archive/full/pilot SHA-256 values from the example unchanged. Install the
+controller and Harbor namespace roles once, then supply a completed model export:
 
 ```bash
-export MATH_EVAL_SUITE_REL='math-eval/suites/math-five'
+uv run --no-sync math-eval nrp run --model YOUR-MODEL-PVC:exports/model-v1 --pilot
+# After inspecting a successful pilot, submit the full suite:
+uv run --no-sync math-eval nrp run --model YOUR-MODEL-PVC:exports/model-v1
 ```
 
-The GPU container sees these paths as `/suites/math-eval/suites/pilot` and
-`/suites/math-eval/suites/math-five`. Its suite mount is read-only. Do not edit or
-add files inside either stored suite, regenerate it in place, or delete the
-shared PVC. New benchmark versions need a different directory and matching local
-copy. Several people may read the same stored suite, while each evaluation writes
-to its own run directory.
+The controller starts the GPU worker, waits for generation, then starts Harbor
+on a CPU worker. Both workers mount the suite PVC read-only, copy the one pinned
+archive to temporary container disk, and validate its contents and fingerprints.
+Harbor creates isolated task pods and runs each verifier there. Reports and
+compressed Harbor diagnostics are saved in a unique evaluation directory under
+`shared-pvc/math-eval/evaluations/`.
 
-## Get the identical local copy for grading
+**No benchmark download or upload is required on a teammate's laptop.** The
+laptop submits Jobs and reads status/report logs. These stored files alone do not
+mean deployment is complete: published images, namespace roles, and a real model
+pilot must also be validated. See the README's deployment status.
 
-You need this once per laptop/checkout; skip it if local `load_suite` validation
-already matches both hashes below. These commands use a separate temporary CPU
+The suite is immutable. Do not edit/regenerate it in place or delete the PVC.
+A new benchmark version needs a new archive, directory, and pinned fingerprints.
+Keep the suite identity and decoding settings fixed when comparing checkpoints.
+Claims cannot be mounted across namespaces; another namespace/cluster needs its
+own prepared storage and profile. Shared storage is not a backup.
+
+## Optional: download a local copy for manual debugging
+
+Only follow this section for the optional [manual workflow](manual-evaluation.md).
+The automated NRP workflow does not need it. Skip the download if local
+`load_suite` validation already matches both hashes below. These commands use a separate temporary CPU
 pod mounting only the suite PVC read-only. No model, inference image, registry
 secret, or GPU is needed for this download. They follow NRP's
 [small-file transfer guidance](https://nrp.ai/documentation/userdocs/storage/move-data/);
@@ -156,24 +164,5 @@ kubectl --context nautilus -n "$MATH_EVAL_NAMESPACE" delete pod \
 
 The helper has a 30-minute deadline. If it stops before download finishes, recreate
 it with a new name; the benchmark data remains on the PVC. For pending/image/mount
-errors, use [README troubleshooting](../README.md#troubleshooting). The pod's GPU
+errors, use [manual troubleshooting](manual-evaluation.md#troubleshooting). The pod's GPU
 node exclusion follows [NRP's CPU workload guidance](https://nrp.ai/documentation/userdocs/running/cpu-only/).
-
-## Continue the evaluation
-
-In the README, skip the two `prepare` commands in section 3, creation of a **suite**
-claim in section 5, and the **Upload the suites** subsection in section 6. You still
-need valid model/output storage; do not skip those checks. Build/publish your
-inference image, run the pilot, then run the full suite using the existing paths.
-After generation, download the run and grade with the matching local suite:
-
-```bash
-uv run --no-sync math-eval grade \
-  --suite suites/math-five \
-  --run runs/YOUR-COMPLETED-RUN-ID
-```
-
-Use `--suite suites/pilot` for pilot outputs. Keep the suite identity fixed when
-comparing SFT-only, SFT + GRPO, and later model checkpoints. If the shared PVC is
-removed or you evaluate from another namespace/cluster, storage must be restored
-or copied there; this upload does not provide cross-namespace mounts or backups.

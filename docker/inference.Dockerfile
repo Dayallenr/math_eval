@@ -1,10 +1,13 @@
 FROM ghcr.io/astral-sh/uv:0.9.5 AS uv
+FROM registry.k8s.io/kubectl:v1.34.1 AS kubectl
 FROM python:3.12-slim
 COPY --from=uv /uv /usr/local/bin/uv
+COPY --from=kubectl /bin/kubectl /usr/local/bin/kubectl
 WORKDIR /opt/math-eval
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
-RUN uv sync --frozen --extra inference --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    UV_HTTP_TIMEOUT=300 uv sync --frozen --extra inference --extra grading --no-dev
 ENV PATH="/opt/math-eval/.venv/bin:$PATH" \
     HF_HOME=/tmp/huggingface \
     PYTHONUNBUFFERED=1

@@ -11,3 +11,6 @@ __pycache__/
 suites/
 runs/
 jobs/
+
+# Local cluster defaults
+nrp.toml

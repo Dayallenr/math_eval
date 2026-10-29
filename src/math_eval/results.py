@@ -85,7 +85,8 @@ def read_harbor_job(job: Path, expected_ids: set[str]) -> dict:
     return graded
 
 
-def grade_run(suite: Path, run_dir: Path, backend: str = 'harbor', concurrency: int = 2) -> dict:
+def grade_run(suite: Path, run_dir: Path, backend: str = 'harbor', concurrency: int = 2,
+              environment_import: str | None = None, environment_kwargs: dict | None = None) -> dict:
     manifest, questions, run, predictions = validate_predictions(suite, run_dir)
     destination = run_dir / 'grading'
     if destination.exists():
@@ -123,6 +124,10 @@ def grade_run(suite: Path, run_dir: Path, backend: str = 'harbor', concurrency: 
                            '--ak', 'predictions_file=' + str((run_dir / 'predictions.jsonl').resolve()),
                            '-m', run['model']['label'], '-n', str(concurrency), '-k', '1',
                            '--jobs-dir', str(destination.resolve()), '--job-name', benchmark]
+                if environment_import:
+                    command.extend(['--env', environment_import])
+                for key, value in (environment_kwargs or {}).items():
+                    command.extend(['--ek', key + '=' + json.dumps(value)])
                 print(f'Harbor grading: {benchmark}', flush=True)
                 with (destination / f'{benchmark}.log').open('w') as log:
                     process = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=env)
@@ -136,6 +141,8 @@ def grade_run(suite: Path, run_dir: Path, backend: str = 'harbor', concurrency: 
         else:
             raise ValueError(f'Unknown backend: {backend}')
         summary = summarize(manifest, questions, predictions, graded, backend)
+        if environment_import:
+            summary['harbor_environment'] = environment_import
         summary.update(model=run['model'], run_id=run['run_id'], suite_sha256=run['suite_sha256'],
                        generation_kind=run['generation_kind'])
         write_json(run_dir / 'summary.json', summary)

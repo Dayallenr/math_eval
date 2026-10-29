@@ -10,3 +10,5 @@ tests
 scripts
 docs
 .env
+
+nrp.toml
