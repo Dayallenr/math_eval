@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from math_eval.inference import TransformersGenerator, identify_model
 
@@ -42,6 +43,15 @@ class TransformersSmoke(unittest.TestCase):
                 self.assertIn(output['finish_reason'], ('eos', 'length'))
                 self.assertLessEqual(output['output_tokens'], 4)
                 self.assertIsInstance(output['response'], str)
+            settings.update(temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, enable_thinking=True)
+            # Check both actual sampling execution and the arguments overriding model defaults.
+            generator.model.generation_config.top_k = 1
+            generator.model.generation_config.min_p = 0.5
+            with patch.object(generator.model, 'generate', wraps=generator.model.generate) as generate:
+                sampled = generator.generate(['Compute two.'])
+            self.assertEqual(len(sampled), 1)
+            for key, value in dict(do_sample=True, temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, max_new_tokens=4).items():
+                self.assertEqual(generate.call_args.kwargs[key], value)
             settings['max_input_tokens'] = 1
             with self.assertRaisesRegex(ValueError, 'no silent truncation'):
                 generator.generate(['Compute two plus three.'])

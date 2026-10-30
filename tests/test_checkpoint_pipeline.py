@@ -21,10 +21,12 @@ def fixtures(root):
     root.mkdir()
     records = {
         'math500': [{'unique_id': 'test/algebra/1.json', 'problem': 'Compute one half.', 'answer': r'\frac{1}{2}', 'solution': 'SECRET GOLD SOLUTION'}],
+        'beyondaime': [{'problem': 'Compute the large integer.', 'answer': 33124147}],
+        'aime2025': [{'problem_idx': 1, 'problem': 'Compute two plus three.', 'answer': 5}],
+        'hmmt2025': [{'problem_idx': 1, 'problem': 'Compute negative one half.', 'answer': r'-\frac{1}{2}'}],
         'aime2026': [{'problem_idx': 1, 'problem': 'Compute two plus three.', 'answer': 5}],
         'hmmt2026': [{'problem_idx': 1, 'problem': 'Compute negative one half.', 'answer': r'-\frac{1}{2}'}],
-        'olympiadbench': [{'id': 1606, 'question': 'Find the requested pair.', 'final_answer': ['(2,3)'], 'language': 'English', 'subject': 'Math', 'modality': 'Text-only', 'question_type': 'Open-ended', 'context': None, 'solution': ['SECRET GOLD SOLUTION']}],
-        'olymmath': [{'unique_id': 'OlymMATH-EASY-0-EN', 'problem': 'Compute the square root of four.', 'answer': '2'}],
+        'olymmath': [{'unique_id': 'OlymMATH-HARD-0-EN', 'problem': 'Compute the square root of four.', 'answer': '2'}],
     }
     for key, rows in records.items():
         (root / f'{key}.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
@@ -39,7 +41,7 @@ class FakeGenerator:
         pass
 
     def generate(self, prompts):
-        answers = ['0.5' if 'one half.' in p and 'negative' not in p else '-0.5' if 'negative' in p else '5' if 'two plus' in p else '(2,3)' if 'pair' in p else '2' for p in prompts]
+        answers = ['33124147' if 'large integer' in p else '0.5' if 'one half.' in p and 'negative' not in p else '-0.5' if 'negative' in p else '5' if 'two plus' in p else '(2,3)' if 'pair' in p else '2' for p in prompts]
         return [{'response': r'\boxed{' + a + '}', 'rendered_prompt': p,
                  'input_tokens': 10, 'output_tokens': 4, 'finish_reason': 'eos'} for p, a in zip(prompts, answers)]
 
@@ -54,6 +56,23 @@ class ExtractionTests(unittest.TestCase):
         self.assertIsNone(extract_final_answer('I tried 12 and 15.'))
         self.assertEqual(extract_final_answer(' 005 '), '005')
         self.assertEqual(extract_final_answer(r'\boxed{\{1,2\}}'), r'\{1,2\}')
+
+    def test_beyondaime_integer_range_and_olymmath_hard_selection(self):
+        self.assertEqual(set(SOURCES), {'math500', 'beyondaime', 'olymmath', 'hmmt2025', 'hmmt2026', 'aime2025', 'aime2026'})
+        self.assertEqual(sum(spec.count for spec in SOURCES.values()), 823)
+        self.assertEqual(SOURCES['olymmath'].files, ('data/OlymMATH-EN-HARD.jsonl',))
+        rows = normalize('beyondaime', [{'problem': 'Find the integer.', 'answer': 33124147}])
+        self.assertEqual(rows[0]['kind'], 'exact_integer')
+        self.assertEqual(rows[0]['source_id'], '1')
+        reference = {'kind': 'exact_integer', 'answer': '33124147'}
+        self.assertEqual(compare('033124147', reference)['reward'], 1.0)
+        self.assertEqual(compare('33124148', reference)['reward'], 0.0)
+        self.assertEqual(compare('33124147.0', reference)['reward'], 0.0)
+        with self.assertRaises(ValueError):
+            normalize('olymmath', [{'unique_id': 'OlymMATH-EASY-0-EN', 'problem': 'Wrong split.', 'answer': '2'}])
+        self.assertEqual(normalize('aime2025', [{'problem_idx': 1, 'problem': 'Find it.', 'answer': 999}])[0]['kind'], 'integer')
+        with self.assertRaises(ValueError):
+            normalize('aime2025', [{'problem_idx': 1, 'problem': 'Find it.', 'answer': 1000}])
 
     def test_broken_reference_is_an_error_even_with_no_submission(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -97,7 +116,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_suite_has_no_gold_in_model_inputs_and_is_portable(self):
         manifest, questions, _ = load_suite(self.suite)
-        self.assertEqual(manifest['question_count'], 5)
+        self.assertEqual(manifest['question_count'], 7)
         self.assertTrue(manifest['subset'])
         self.assertIsNone(manifest['sources']['math500']['revision'])
         text = (self.suite / 'questions.jsonl').read_text()

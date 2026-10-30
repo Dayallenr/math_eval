@@ -6,7 +6,7 @@ only when deliberately running the stages yourself.
 
 # Math evaluation with Harbor
 
-Run an exported SFT or GRPO model on five math benchmarks and save a separate
+Run an exported SFT or GRPO model on seven math benchmarks and save a separate
 score for each benchmark. This guide covers the complete NRP workflow, from a
 fresh laptop checkout to downloading and grading a real model's answers.
 
@@ -15,19 +15,21 @@ The inference image and a real lab checkpoint still need to be tested on your NR
 namespace. Start with the pilot below before scheduling the full suite.
 
 **Lab datasets are already on NRP:** teammates in `wang-research-lab` can reuse
-`shared-pvc` at `math-eval/suites/math-five` (full) and `math-eval/suites/pilot`.
+`shared-pvc` at `math-eval/suites/math-seven` (full) and `math-eval/suites/pilot-seven`.
 Follow [the shared-suite instructions](nrp-shared-suites.md) to obtain the
 matching local grading copy and skip dataset preparation/upload. Model and image
 setup, generation, and grading are still needed.
 
 | Benchmark | Selection | Questions |
 | --- | --- | ---: |
-| MATH-500 | Test split | 500 |
-| AIME 2026 | MathArena release | 30 |
+| MATH-500 | Test | 500 |
+| BeyondAIME | Test | 100 |
+| OlymMATH (en-hard) | English HARD only | 100 |
+| HMMT February 2025 | MathArena release | 30 |
 | HMMT February 2026 | MathArena release | 33 |
-| OlympiadBench | English text-only open-ended math | 674 |
-| OlymMATH | English EASY + HARD | 200 |
-| Total | | 1,437 |
+| AIME 2025 | MathArena release, I + II | 30 |
+| AIME 2026 | MathArena release, I + II | 30 |
+| Total | | 823 |
 
 The source releases are pinned in `src/math_eval/suite.py`; each generated
 `suite.json` records the selections, source commits, and file hashes. Several
@@ -36,7 +38,7 @@ upstream splits are named `train`; this workflow uses their questions for evalua
 The suite stores questions in one file with benchmark labels. The model loads
 once and answers independent prompts, in the order above. Its weights do not
 change. After all responses are saved, Harbor grades each benchmark separately.
-You get five scores, not one combined accuracy. No model-serving endpoint is
+You get seven scores, not one combined accuracy. No model-serving endpoint is
 required.
 
 ```text
@@ -224,16 +226,16 @@ copies, skip the two `prepare` commands below, and then validate them here.
 Also skip the upload subsection in section 6. Continue configuring your model,
 inference image, and output storage normally.
 
-For a new independent setup, prepare a ten-question pilot and the full suite
+For a new independent setup, prepare a fourteen-question pilot and the full suite
 **on your laptop**:
 
 ```bash
-uv run --no-sync math-eval prepare --output suites/pilot --limit 2
-uv run --no-sync math-eval prepare --output suites/math-five
+uv run --no-sync math-eval prepare --output suites/pilot-seven --limit 2
+uv run --no-sync math-eval prepare --output suites/math-seven
 ```
 
 Run each preparation command only if its output directory does not already exist.
-This checkout may already contain `suites/math-five`; generated suites are ignored
+This checkout may already contain `suites/math-seven`; generated suites are ignored
 by Git, so fresh clones must prepare them. Existing output is never overwritten.
 The pilot has two questions per benchmark and is not a full benchmark score.
 
@@ -243,14 +245,14 @@ Validate the exact files before transferring them:
 uv run --no-sync python - <<'PY'
 from pathlib import Path
 from math_eval.suite import load_suite
-for name in ('pilot', 'math-five'):
+for name in ('pilot-seven', 'math-seven'):
     manifest, questions, fingerprint = load_suite(Path('suites') / name)
     print(name, len(questions), manifest['counts'], 'subset=', manifest['subset'])
     print('suite SHA256:', fingerprint)
 PY
 ```
 
-Expected totals: pilot **10**, full suite **1,437**. Keep these exact directories
+Expected totals: pilot **14**, full suite **823**. Keep these exact directories
 for local grading. Do not add notes, edit graders, or regenerate a suite between
 generation and grading; the runner verifies file hashes. The model receives only
 the question and math instruction, never the reference answers or oracle script.
@@ -424,7 +426,7 @@ API fields and admission rules; it does not prove the image or storage will work
 ### Upload the suites
 
 **Skip this subsection when reusing the lab's verified upload on `shared-pvc`.**
-Use the existing `math-eval/suites/pilot` and `math-eval/suites/math-five` paths.
+Use the existing `math-eval/suites/pilot-seven` and `math-eval/suites/math-seven` paths.
 The model/output checks later in this section still apply.
 
 Use one archive to transfer the many task files. `COPYFILE_DISABLE=1` avoids
@@ -433,21 +435,21 @@ The destination suite directories must not already exist; reuse an identical
 uploaded suite or choose a new destination rather than overwriting an older one.
 
 ```bash
-COPYFILE_DISABLE=1 tar -czf .cache/nrp/suites.tgz -C suites pilot math-five
+COPYFILE_DISABLE=1 tar -czf .cache/nrp/suites.tgz -C suites pilot-seven math-seven
 kubectl -n "$MATH_EVAL_NAMESPACE" cp .cache/nrp/suites.tgz \
   "$MATH_EVAL_TRANSFER_POD:/tmp/math-eval-suites.tgz"
 kubectl -n "$MATH_EVAL_NAMESPACE" exec -i "$MATH_EVAL_TRANSFER_POD" -- python - <<'PY'
 from pathlib import Path
 import subprocess
 root = Path('/suites/math-eval/suites')
-assert not any((root / name).exists() for name in ('pilot', 'math-five')), 'Suite destination exists; verify/reuse it or choose a fresh path'
+assert not any((root / name).exists() for name in ('pilot-seven', 'math-seven')), 'Suite destination exists; verify/reuse it or choose a fresh path'
 root.mkdir(parents=True, exist_ok=True)
 subprocess.run(['tar', '-xzf', '/tmp/math-eval-suites.tgz', '-C', str(root)], check=True)
 PY
 kubectl -n "$MATH_EVAL_NAMESPACE" exec -i "$MATH_EVAL_TRANSFER_POD" -- python - <<'PY'
 from pathlib import Path
 from math_eval.suite import load_suite
-for name in ('pilot', 'math-five'):
+for name in ('pilot-seven', 'math-seven'):
     manifest, questions, fingerprint = load_suite(Path('/suites/math-eval/suites') / name)
     print(name, len(questions), 'suite SHA256:', fingerprint)
 PY
@@ -520,7 +522,7 @@ Render a Job for the uploaded pilot. The renderer only writes JSON; it does not
 submit anything. An empty pull-secret argument omits `imagePullSecrets`.
 
 ```bash
-export MATH_EVAL_SUITE_REL='math-eval/suites/pilot'
+export MATH_EVAL_SUITE_REL='math-eval/suites/pilot-seven'
 export MATH_EVAL_JOB="math-eval-pilot-$(date -u +%Y%m%d%H%M%S)"
 export MATH_EVAL_JOB_FILE=".cache/nrp/$MATH_EVAL_JOB.json"
 uv run --no-sync python scripts/render_nrp_job.py \
@@ -535,7 +537,7 @@ uv run --no-sync python scripts/render_nrp_job.py \
   --output-relative-path "$MATH_EVAL_OUTPUT_REL" \
   --gpu-resource nvidia.com/a100 \
   --batch-size 1 \
-  --max-new-tokens 8192 \
+  --max-new-tokens 12288 \
   --image-pull-secret "$MATH_EVAL_PULL_SECRET" \
   > "$MATH_EVAL_JOB_FILE"
 uv run --no-sync python -m json.tool "$MATH_EVAL_JOB_FILE"
@@ -562,7 +564,7 @@ logs error means inference failed. Ctrl-C on `logs -f` stops following logs; it
 does not stop the Job. A wait timeout also does not stop the Job. If a Job fails,
 `wait` may time out; inspect the Job/pod status and logs directly.
 
-The logs should progress to `Generated 10/10` and print a path like
+The logs should progress to `Generated 14/14` and print a path like
 `/results/math-eval/runs/20261028T000000Z-abcdefgh`. The directory name is the run ID.
 The example is illustrative; copy the ID from your actual logs. Save logs while
 they are available:
@@ -634,7 +636,7 @@ Run on your laptop with Docker started, using the **same pilot suite**:
 uv sync --locked --extra grading
 docker info
 uv run --no-sync math-eval grade \
-  --suite suites/pilot \
+  --suite suites/pilot-seven \
   --run "runs/$MATH_EVAL_RUN_ID"
 ```
 
@@ -643,7 +645,7 @@ Harbor starts CPU-only task containers and uploads each saved answer. It runs
 This step neither loads Qwen nor calls a model endpoint. The first grader build
 needs access to its Python base image and pinned math packages.
 
-Inspect the five separate scores:
+Inspect the seven separate scores:
 
 ```bash
 uv run --no-sync python - "$MATH_EVAL_RUN_ID" <<'PY'
@@ -665,7 +667,7 @@ PY
 | `run.json` | Model/export identity, suite identity, settings, versions, generation status |
 | `predictions.jsonl` | Original/rendered prompts, full responses, extracted answers, token counts, finish reasons |
 | `grading/` | Harbor jobs, trial logs, and verifier results |
-| `summary.json` | Five scores and per-question diagnostics; created after grading |
+| `summary.json` | Seven scores and per-question diagnostics; created after grading |
 
 A pilot verifies that loading, generation, transfer, and grading work. Low scores
 alone do not mean the harness is broken; inspect raw responses and truncation.
@@ -680,23 +682,23 @@ After the pilot completes and its outputs make sense, switch the uploaded suite
 path and choose a new Job name:
 
 ```bash
-export MATH_EVAL_SUITE_REL='math-eval/suites/math-five'
+export MATH_EVAL_SUITE_REL='math-eval/suites/math-seven'
 export MATH_EVAL_JOB="math-eval-full-$(date -u +%Y%m%d%H%M%S)"
 export MATH_EVAL_JOB_FILE=".cache/nrp/$MATH_EVAL_JOB.json"
 ```
 
 Rerun the **renderer and submission block in section 7** with these variables,
-then monitor it. A full run must reach `Generated 1437/1437`. Follow section 8 to
+then monitor it. A full run must reach `Generated 823/823`. Follow section 8 to
 retrieve its new run ID, then grade with the full local suite:
 
 ```bash
 uv run --no-sync math-eval grade \
-  --suite suites/math-five \
+  --suite suites/math-seven \
   --run "runs/$MATH_EVAL_RUN_ID"
 ```
 
 The downloaded `run.json` and resulting summary should report `subset: false`
-and the five full counts shown at the top. Keep the image, suite, token budget,
+and the seven full counts shown at the top. Keep the image, suite, token budget,
 thinking mode, and sampling settings fixed when comparing checkpoints.
 
 For each later model: finish/export it, update `MATH_EVAL_MODEL_PVC` and/or
@@ -732,7 +734,7 @@ From this repository on that machine:
 uv sync --locked --extra inference --extra grading
 docker info
 uv run --no-sync math-eval evaluate \
-  --suite suites/math-five \
+  --suite suites/math-seven \
   --model /path/to/exported/model \
   --output-root runs
 ```
@@ -747,7 +749,7 @@ run this **inside that GPU pod**, adjusting paths to its actual mounts:
 
 ```bash
 math-eval generate \
-  --suite /suites/math-eval/suites/pilot \
+  --suite /suites/math-eval/suites/pilot-seven \
   --model /models/runs/your-completed-model-export \
   --output-root /results/math-eval/runs
 ```
@@ -760,7 +762,7 @@ Do not install a virtual environment on a shared CephFS PVC.
 
 ```bash
 uv run --no-sync math-eval grade \
-  --suite suites/math-five \
+  --suite suites/math-seven \
   --run "runs/$MATH_EVAL_RUN_ID" \
   --backend local
 ```
@@ -772,13 +774,14 @@ below if the run already has a `grading/` directory.
 
 ### Generation settings and Hub models
 
-Defaults: one response per question, batch size 1, greedy decoding, seed 42,
-8,192 maximum input tokens, 8,192 new tokens, thinking disabled. CUDA uses BF16
+Defaults: one response per question, batch size 1, seed 42,
+8,192 maximum input tokens, 12,288 new tokens, thinking disabled, and Qwen3-8B
+non-thinking sampling (temperature 0.7, top-p 0.8, top-k 20, min-p 0). CUDA uses BF16
 when supported, otherwise FP16. The original SFT evaluation used thinking off;
 choose the mode that matches your experiment and keep it fixed for comparisons.
 
 The generation CLI supports `--batch-size`, `--max-new-tokens`,
-`--max-input-tokens`, `--temperature`, `--top-p`, `--seed`, `--dtype`, and
+`--max-input-tokens`, `--temperature`, `--top-p`, `--top-k`, `--min-p`, `--seed`, `--dtype`, and
 `--enable-thinking` / `--no-enable-thinking`. Oversized inputs are rejected, not
 silently truncated. This runner does not shard models across multiple GPUs.
 
@@ -843,11 +846,11 @@ mkdir "$MATH_EVAL_RETRY_DIR" &&
 cp "runs/$MATH_EVAL_RUN_ID/run.json" "$MATH_EVAL_RETRY_DIR/run.json" &&
 cp "runs/$MATH_EVAL_RUN_ID/predictions.jsonl" "$MATH_EVAL_RETRY_DIR/predictions.jsonl" &&
 uv run --no-sync math-eval grade \
-  --suite suites/math-five \
+  --suite suites/math-seven \
   --run "$MATH_EVAL_RETRY_DIR"
 ```
 
-For a pilot retry, use `--suite suites/pilot` instead. This preserves the original
+For a pilot retry, use `--suite suites/pilot-seven` instead. This preserves the original
 model/run identity and prediction hash; it creates another grading attempt, not
 new model responses. It cannot repair incomplete or changed generation.
 
@@ -855,7 +858,7 @@ new model responses. It cannot repair incomplete or changed generation.
 
 This is single-response, unaided math evaluation with a shared custom protocol,
 not an exact reproduction of each paper's prompt, scorer, or multi-sample results.
-AIME uses integer comparison; other benchmarks use exact matching and Math-Verify
+AIME and BeyondAIME use integer comparison; other benchmarks use exact matching and Math-Verify
 0.9.0. Valid alternative expressions can still be misinterpreted by an automatic
 grader, and source labels may contain errors. Review diagnostics when auditing
 scores. Check training overlap before claiming held-out performance.

@@ -1,7 +1,7 @@
 # How the NRP evaluation pipeline works
 
 The input is a finished Hugging Face model export on an NRP PVC. The output is
-five benchmark scores, individual question results, and diagnostics on persistent
+seven benchmark scores, individual question results, and diagnostics on persistent
 NRP storage. The model's training method does not change this workflow: base,
 SFT-only, SFT plus GRPO, and other compatible exports use the same interface.
 Follow the [README](../README.md) for installation and commands.
@@ -46,6 +46,15 @@ The GPU worker reads question prompts and never passes reference answers, test
 files, or oracle scripts to the model. It creates one response per question with
 fixed decoding settings. Questions are independent; evaluating does not train or
 update the weights. A truncated output is recorded, not silently retried.
+
+The default lab profile is Qwen3-8B with thinking off, temperature 0.7, top-p 0.8,
+top-k 20, min-p 0, and at most 12,288 generated tokens per question. For thinking
+mode use thinking on, temperature 0.6 and top-p 0.95, keeping the other settings.
+Both profiles follow [Qwen sampling guidance](https://huggingface.co/Qwen/Qwen3-8B#best-practices);
+the shorter output budget is the lab convention, not Qwen's general recommendation.
+Use one fixed profile for the base, SFT and GRPO checkpoints being compared.
+The output budget includes reasoning and final answer and excludes input tokens.
+Transformers is the implemented inference backend; vLLM serving remains separate work.
 
 Harbor later runs the replay agent in each task pod. The agent writes the saved
 model response to the expected answer file. Harbor uploads/runs the verifier,
@@ -156,10 +165,10 @@ runs/RUN-ID/grading-diagnostics.tgz  Harbor trials, verifier logs and rewards
 
 Benchmarks remain separate. A single model load processes all questions;
 Harbor then grades benchmark groups and reports one score for each group. The
-scores are not combined into a new benchmark. The ten-question pilot has two
-questions per benchmark; use the full 1,437-question suite for reported results.
+scores are not combined into a new benchmark. The fourteen-question pilot has two
+questions per benchmark; use the full 823-question suite for reported results.
 
-AIME uses integer comparison. Other math tasks use exact matching followed by
+AIME and BeyondAIME use integer comparison; only AIME has a 0–999 answer limit. Other math tasks use exact matching followed by
 Math-Verify 0.9.0 with pinned LaTeX/SymPy dependencies. Wrong answers and missing
 final answers score zero with diagnostic reasons. Infrastructure/verifier errors
 fail the evaluation instead of being counted as ordinary wrong answers.

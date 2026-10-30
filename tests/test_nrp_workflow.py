@@ -62,11 +62,11 @@ class NRPWorkflowTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.suites = self.root / 'suite-volume'
         self.suites.mkdir()
-        suite = self.root / 'math-five'
+        suite = self.root / 'math-seven'
         prepare(suite, list(SOURCES), local_sources=fixtures(self.root / 'source'))
         archive = self.suites / 'suite.tgz'
         with tarfile.open(archive, 'w:gz') as packed:
-            packed.add(suite, arcname='math-five')
+            packed.add(suite, arcname='math-seven')
         self.models = self.root / 'model-volume'
         model = self.models / 'exports/model-v1'
         model.mkdir(parents=True)
@@ -75,7 +75,7 @@ class NRPWorkflowTests(unittest.TestCase):
         self.config = deepcopy(DEFAULTS)
         self.config.update(image='registry.example/lab/math-eval:test', task_image='registry.example/lab/math-task:test', suite_archive='suite.tgz',
                            archive_sha256=digest(archive.read_bytes()), full_sha256=load_suite(suite)[2],
-                           pilot_suite='math-five', pilot_sha256=load_suite(suite)[2])
+                           pilot_suite='math-seven', pilot_sha256=load_suite(suite)[2])
         self.config['settings'].update(device='cuda', max_new_tokens=16)
         self.request = request_for(self.config, 'model-pvc:exports/model-v1', name='math-eval-fixture')
         self.output = self.root / 'output-volume'
@@ -87,7 +87,7 @@ class NRPWorkflowTests(unittest.TestCase):
         self.assertEqual(api.created, ['generate', 'grade'])
         self.assertEqual(report['status'], 'complete')
         self.assertEqual(report['grading_backend'], 'harbor')
-        self.assertEqual(len(report['benchmarks']), 5)
+        self.assertEqual(len(report['benchmarks']), 7)
         self.assertTrue(all(s['accuracy'] == 1.0 for s in report['benchmarks'].values()))
         directory = self.output / self.config['output_relative_path'] / self.request['evaluation_id']
         self.assertEqual(json.loads((directory / 'pipeline.json').read_text())['status'], 'complete')
@@ -157,6 +157,18 @@ class NRPWorkflowTests(unittest.TestCase):
                     self.assertTrue(mount['readOnly'])
         rules = rbac_for(self.config)['items'][1]['rules']
         self.assertEqual(rules, [{'apiGroups': ['batch'], 'resources': ['jobs'], 'verbs': ['create', 'get']}])
+
+    def test_qwen_sampling_settings_are_preserved_and_invalid_filters_rejected(self):
+        settings = self.request['config']['settings']
+        self.assertEqual(settings['top_k'], 20)
+        self.assertEqual(settings['min_p'], 0.0)
+        self.assertEqual(settings['temperature'], 0.7)
+        self.assertEqual(settings['top_p'], 0.8)
+        for key, bad in [('top_k', -1), ('top_k', 1.5), ('min_p', -0.1), ('min_p', 1.1), ('min_p', float('nan'))]:
+            config = deepcopy(self.config)
+            config['settings'][key] = bad
+            with self.subTest(key=key, value=bad), self.assertRaises(ValueError):
+                validate_config(config)
 
     def test_gpu_memory_constraint_and_a6000_resource_selection(self):
         request = deepcopy(self.request)

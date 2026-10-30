@@ -1,37 +1,43 @@
 {
-  "verified_at": "2026-10-29T04:45:45.469884+00:00",
+  "prepared_at": "2026-10-30T05:57:42.070558+00:00",
   "namespace": "wang-research-lab",
   "pvc": "shared-pvc",
   "storage_class": "rook-cephfs",
-  "archive_relative_path": "math-eval/archives/math-five-51ba33d52138-pilot-65433b136342.tgz",
-  "archive_sha256": "899553e4869174b347dcd9924fef41528c3334be14c2750c524263400e1347ba",
-  "archive_bytes": 1241540,
+  "archive_relative_path": "math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz",
+  "archive_sha256": "208e3344aaba2a3e1be1fb6edd50eb8a28dd09a32f9213918148b277ecfd5643",
+  "archive_bytes": 746165,
+  "receipt_relative_path": "math-eval/shared-suite-seven.json",
   "suites": {
-    "math-five": {
-      "suite_sha256": "51ba33d52138a6593897ef0fe1169af4e7d5b34a90099389fe4b5efcdba7b217",
+    "math-seven": {
+      "suite_sha256": "b43163a56bb3944876ec01c781feedb8dcd4fcea74ca1d44491f17cd8c1ad121",
       "counts": {
         "math500": 500,
-        "aime2026": 30,
+        "beyondaime": 100,
+        "olymmath": 100,
+        "hmmt2025": 30,
         "hmmt2026": 33,
-        "olympiadbench": 674,
-        "olymmath": 200
+        "aime2025": 30,
+        "aime2026": 30
       },
-      "question_count": 1437,
+      "question_count": 823,
       "subset": false,
-      "pvc_relative_path": "math-eval/suites/math-five"
+      "pvc_relative_path": "math-eval/suites/math-seven"
     },
-    "pilot": {
-      "suite_sha256": "65433b13634216d12811ba5776ed59d589a51e2207718822013400debf2c1207",
+    "pilot-seven": {
+      "suite_sha256": "b7a747d5908a0c2436c06c388fde4479816cb80bded0e292a0617123bccd88ce",
       "counts": {
         "math500": 2,
-        "aime2026": 2,
+        "beyondaime": 2,
+        "olymmath": 2,
+        "hmmt2025": 2,
         "hmmt2026": 2,
-        "olympiadbench": 2,
-        "olymmath": 2
+        "aime2025": 2,
+        "aime2026": 2
       },
-      "question_count": 10,
+      "question_count": 14,
       "subset": true,
-      "pvc_relative_path": "math-eval/suites/pilot"
+      "pvc_relative_path": "math-eval/suites/pilot-seven"
     }
-  }
+  },
+  "verified_at": "2026-10-30T06:08:48.078380+00:00"
 }

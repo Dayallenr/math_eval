@@ -1,7 +1,7 @@
 # Reuse the lab's uploaded math benchmarks
 
 The prepared full suite and pilot were uploaded and verified on NRP on
-October 28, 2026. Teammates with access to `wang-research-lab` can reuse them for
+October 29, 2026. Teammates with access to `wang-research-lab` can reuse them for
 later checkpoints. No dataset upload or new suite PVC is needed for each model.
 
 | Setting | Value |
@@ -10,14 +10,21 @@ later checkpoints. No dataset upload or new suite PVC is needed for each model.
 | Namespace | `wang-research-lab` |
 | Existing suite PVC | `shared-pvc` |
 | Storage class / access | `rook-cephfs` / `ReadWriteMany` |
-| Full suite path relative to PVC root | `math-eval/suites/math-five` |
-| Pilot path relative to PVC root | `math-eval/suites/pilot` |
-| Downloadable archive relative to PVC root | `math-eval/archives/math-five-51ba33d52138-pilot-65433b136342.tgz` |
-| Verification receipt relative to PVC root | `math-eval/shared-suite.json` |
+| Full suite path relative to PVC root | `math-eval/suites/math-seven` |
+| Pilot path relative to PVC root | `math-eval/suites/pilot-seven` |
+| Downloadable archive relative to PVC root | `math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz` |
+| Verification receipt relative to PVC root | `math-eval/shared-suite-seven.json` |
 
-The full suite contains 1,437 questions: MATH-500 500, AIME 2026 30, HMMT February
-2026 33, OlympiadBench 674, and OlymMATH 200. The pilot contains two per benchmark,
-ten total. [The checked upload receipt](nrp-shared-suites.json) records the hashes.
+The full suite contains **823 questions** across the seven benchmarks requested
+from the screenshot: MATH-500 500, BeyondAIME 100, OlymMATH English HARD 100,
+HMMT February 2025 30, HMMT February 2026 33, AIME 2025 30, and AIME 2026 30.
+The pilot has two per benchmark, fourteen total. These are the complete pinned
+releases, not the screenshot's unidentified 20-question samples.
+
+The previous five-benchmark suite and archive remain available unchanged for old
+runs; [its historical receipt](nrp-shared-suites-legacy.json) records those files.
+Do not use that old suite for new seven-benchmark comparisons.
+[The current receipt](nrp-shared-suites.json) records the new fingerprints.
 
 ## Default: generation and Harbor grading on NRP
 
@@ -29,7 +36,7 @@ these already-uploaded settings:
 namespace = "wang-research-lab"
 suite_pvc = "shared-pvc"
 output_pvc = "shared-pvc"
-suite_archive = "math-eval/archives/math-five-51ba33d52138-pilot-65433b136342.tgz"
+suite_archive = "math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz"
 ```
 
 Keep the archive/full/pilot SHA-256 values from the example unchanged. Install the
@@ -67,7 +74,7 @@ The automated NRP workflow does not need it. Skip the download if local
 pod mounting only the suite PVC read-only. No model, inference image, registry
 secret, or GPU is needed for this download. They follow NRP's
 [small-file transfer guidance](https://nrp.ai/documentation/userdocs/storage/move-data/);
-the compressed archive is about 1.2 MB.
+the compressed archive is about 0.75 MB.
 
 Run from the repo root after completing tool installation and NRP login. With a
 separate kubeconfig, first re-export `KUBECONFIG` as described in the README.
@@ -113,7 +120,7 @@ kubectl --context nautilus create -f .cache/nrp/shared-suite-download-pod.json
 kubectl --context nautilus -n "$MATH_EVAL_NAMESPACE" wait \
   --for=condition=Ready "pod/$MATH_EVAL_SHARED_DOWNLOAD_POD" --timeout=10m
 kubectl --context nautilus -n "$MATH_EVAL_NAMESPACE" cp --retries=3 \
-  "$MATH_EVAL_SHARED_DOWNLOAD_POD:/suites/math-eval/archives/math-five-51ba33d52138-pilot-65433b136342.tgz" \
+  "$MATH_EVAL_SHARED_DOWNLOAD_POD:/suites/math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz" \
   .cache/nrp/shared-suites.tgz
 ```
 
@@ -129,10 +136,10 @@ import tarfile
 import tempfile
 from math_eval.suite import load_suite
 archive = Path('.cache/nrp/shared-suites.tgz')
-assert hashlib.sha256(archive.read_bytes()).hexdigest() == '899553e4869174b347dcd9924fef41528c3334be14c2750c524263400e1347ba', 'Archive differs; download again'
+assert hashlib.sha256(archive.read_bytes()).hexdigest() == '208e3344aaba2a3e1be1fb6edd50eb8a28dd09a32f9213918148b277ecfd5643', 'Archive differs; download again'
 expected = {
-    'math-five': '51ba33d52138a6593897ef0fe1169af4e7d5b34a90099389fe4b5efcdba7b217',
-    'pilot': '65433b13634216d12811ba5776ed59d589a51e2207718822013400debf2c1207',
+    'math-seven': 'b43163a56bb3944876ec01c781feedb8dcd4fcea74ca1d44491f17cd8c1ad121',
+    'pilot-seven': 'b7a747d5908a0c2436c06c388fde4479816cb80bded0e292a0617123bccd88ce',
 }
 root = Path('suites')
 root.mkdir(exist_ok=True)

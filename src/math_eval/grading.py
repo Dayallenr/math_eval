@@ -49,10 +49,12 @@ def clean_math(text: str) -> str:
 
 
 def validate_reference(reference: dict) -> None:
-    if reference.get('kind') not in ('integer', 'math') or not isinstance(reference.get('answer'), str) or not reference['answer'].strip():
+    if reference.get('kind') not in ('integer', 'exact_integer', 'math') or not isinstance(reference.get('answer'), str) or not reference['answer'].strip():
         raise ValueError('Invalid reference file')
     if reference['kind'] == 'integer' and re.fullmatch(r'[0-9]{1,3}', reference['answer'].strip()) is None:
         raise ValueError('AIME reference must be an integer in 0..999')
+    if reference['kind'] == 'exact_integer' and re.fullmatch(r'[0-9]+', reference['answer'].strip()) is None:
+        raise ValueError('BeyondAIME reference must be a nonnegative integer')
 
 
 def compare(answer: str, reference: dict) -> dict:
@@ -66,6 +68,10 @@ def compare(answer: str, reference: dict) -> dict:
             return {'reward': 0.0, 'reason': 'invalid_format'}
         correct = int(answer) == int(gold)
         method = 'integer'
+    elif kind == 'exact_integer':
+        if re.fullmatch(r'[0-9]+', answer.strip()) is None:
+            return {'reward': 0.0, 'reason': 'invalid_format'}
+        correct, method = int(answer) == int(gold), 'integer'
     elif kind == 'math':
         # Import even for exact matches: a broken grader installation is an error.
         from math_verify import LatexExtractionConfig, parse, verify

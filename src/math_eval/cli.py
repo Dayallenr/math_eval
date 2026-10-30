@@ -32,10 +32,12 @@ def main() -> None:
         cmd.add_argument('--revision', help='Hub model commit/tag; resolved to exact commit')
         cmd.add_argument('--output-root', type=Path, default=Path('runs'))
         cmd.add_argument('--batch-size', type=positive_int, default=1)
-        cmd.add_argument('--max-new-tokens', type=positive_int, default=8192)
+        cmd.add_argument('--max-new-tokens', type=positive_int, default=12288)
         cmd.add_argument('--max-input-tokens', type=positive_int, default=8192)
-        cmd.add_argument('--temperature', type=float, default=0.0)
-        cmd.add_argument('--top-p', type=float, default=1.0)
+        cmd.add_argument('--temperature', type=float, default=0.7)
+        cmd.add_argument('--top-p', type=float, default=0.8)
+        cmd.add_argument('--top-k', type=int, default=20, help='0 disables top-k filtering')
+        cmd.add_argument('--min-p', type=float, default=0.0)
         cmd.add_argument('--seed', type=int, default=42)
         cmd.add_argument('--enable-thinking', action=argparse.BooleanOptionalAction, default=False)
         cmd.add_argument('--device', choices=('cuda', 'cpu'), default='cuda')
@@ -74,8 +76,10 @@ def main() -> None:
         else:
             if not math.isfinite(args.temperature) or not math.isfinite(args.top_p) or args.temperature < 0 or not 0 < args.top_p <= 1:
                 raise ValueError('Temperature must be >=0 and top_p must be in (0,1]')
+            if args.top_k < 0 or not math.isfinite(args.min_p) or not 0 <= args.min_p <= 1:
+                raise ValueError('top_k must be >=0 and min_p must be in [0,1]')
             settings = {key: getattr(args, key) for key in (
-                'batch_size', 'max_new_tokens', 'max_input_tokens', 'temperature', 'top_p',
+                'batch_size', 'max_new_tokens', 'max_input_tokens', 'temperature', 'top_p', 'top_k', 'min_p',
                 'seed', 'enable_thinking', 'device', 'dtype')}
             run = generate_run(args.suite.resolve(), args.model, args.output_root.resolve(), settings, args.revision)
             if args.command == 'evaluate':

@@ -1,0 +1,37 @@
+{
+  "verified_at": "2026-10-29T04:45:45.469884+00:00",
+  "namespace": "wang-research-lab",
+  "pvc": "shared-pvc",
+  "storage_class": "rook-cephfs",
+  "archive_relative_path": "math-eval/archives/math-five-51ba33d52138-pilot-65433b136342.tgz",
+  "archive_sha256": "899553e4869174b347dcd9924fef41528c3334be14c2750c524263400e1347ba",
+  "archive_bytes": 1241540,
+  "suites": {
+    "math-five": {
+      "suite_sha256": "51ba33d52138a6593897ef0fe1169af4e7d5b34a90099389fe4b5efcdba7b217",
+      "counts": {
+        "math500": 500,
+        "aime2026": 30,
+        "hmmt2026": 33,
+        "olympiadbench": 674,
+        "olymmath": 200
+      },
+      "question_count": 1437,
+      "subset": false,
+      "pvc_relative_path": "math-eval/suites/math-five"
+    },
+    "pilot": {
+      "suite_sha256": "65433b13634216d12811ba5776ed59d589a51e2207718822013400debf2c1207",
+      "counts": {
+        "math500": 2,
+        "aime2026": 2,
+        "hmmt2026": 2,
+        "olympiadbench": 2,
+        "olymmath": 2
+      },
+      "question_count": 10,
+      "subset": true,
+      "pvc_relative_path": "math-eval/suites/pilot"
+    }
+  }
+}

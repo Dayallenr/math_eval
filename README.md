@@ -3,7 +3,7 @@
 Provide a completed model export on NRP storage with one command. A controller
 running on NRP starts GPU generation, then a CPU Harbor grading job. Harbor
 creates isolated Kubernetes task pods, runs the replay agent and each verifier,
-and collects the results. Five separate benchmark scores and diagnostics remain
+and collects the results. Seven separate benchmark scores and diagnostics remain
 on shared storage. Your laptop only submits the request and displays results.
 
 ```text
@@ -15,7 +15,7 @@ Model export on PVC -> NRP controller
                          |
                isolated task pods + test.sh
                          |
-               five benchmark scores on PVC
+               seven benchmark scores on PVC
 ```
 
 The controller continues after you close your terminal. GPU generation finishes
@@ -26,21 +26,27 @@ installed Harbor version is pinned to 0.23.0. NRP grading records
 | Benchmark | Selection | Questions |
 | --- | --- | ---: |
 | MATH-500 | Test | 500 |
-| AIME 2026 | MathArena release | 30 |
+| BeyondAIME | Test | 100 |
+| OlymMATH (en-hard) | English HARD only | 100 |
+| HMMT February 2025 | MathArena release | 30 |
 | HMMT February 2026 | MathArena release | 33 |
-| OlympiadBench | English text-only open-ended math | 674 |
-| OlymMATH | English EASY + HARD | 200 |
-| Total | | 1,437 |
+| AIME 2025 | MathArena release, I + II | 30 |
+| AIME 2026 | MathArena release, I + II | 30 |
+| Total | | 823 |
 
-The full suite, ten-question pilot, and pinned archive are already on
+The full suite, fourteen-question pilot, and pinned archive are already on
 `wang-research-lab/shared-pvc`. Do not prepare, upload, or download benchmark files
 for the normal NRP workflow. See [the storage record](docs/nrp-shared-suites.md).
+The benchmark selection matches the seven names in the supplied screenshot, using
+all questions rather than its 20-question samples.
+See [dataset sources and pinned revisions](docs/benchmark-sources.md). OlympiadBench and OlymMATH
+English EASY are excluded. Old five-benchmark scores are not comparable to this suite.
 Each question is an independent prompt; model weights stay fixed. Reference
 answers and oracle scripts are never passed to Qwen.
 
 **Deployment status:** the source includes the automated controller and Harbor
 NRP provider. Publishing the runner/task images, installing the namespace roles,
-and validating a real model on a GPU are required before production use. The 29 regression tests and a live three-task Harbor/AIME check on NRP passed;
+and validating a real model on a GPU are required before production use. The 31 regression tests and a live three-task Harbor/AIME check on NRP passed;
 these use fixtures, not a trained model. The cluster check used the public Python
 image for integer scoring. Published images, noninteger scoring on NRP, and real
 GPU generation remain to be validated. The Linux math-task image also built
@@ -121,6 +127,14 @@ Torch build uses CUDA 12.8.
 
 ## 3. Publish two images once
 
+For the lab runner, use the prepared [remote GitLab build instructions](docs/gitlab-runner-build.md)
+and `.gitlab-ci.yml`. Upload the current code to the `evaluation-setup` branch of
+`Dayallen/model-eval`, then start its manual `build-runner` job. The following
+verification job tests the published image. No remote build has run yet. The
+manual Docker commands below are an alternative for a builder with enough space;
+they should not be run on the almost-full laptop. The math-task image is a separate
+publication step.
+
 Skip building if a maintainer supplies compatible published runner and task image
 URLs/digests. Otherwise, choose a registry project you can push into. The lab
 currently uses `gitlab-registry.nrp-nautilus.io`; its training image is under
@@ -178,6 +192,11 @@ Docker login on your laptop does not configure NRP's image pulls.
 cp nrp.example.toml nrp.toml
 ```
 
+If you already have `nrp.toml`, preserve its image and storage settings and update
+`suite_archive`, `archive_sha256`, `full_suite`, `full_sha256`, `pilot_suite`, and
+`pilot_sha256` from the new example. Old profiles still select the old suite;
+changing the code alone does not update an existing ignored profile.
+
 Edit `nrp.toml`:
 
 - Set `image` to the runner image and `task_image` to the math task image.
@@ -186,8 +205,16 @@ Edit `nrp.toml`:
   installed shared setup. Output goes into `math-eval/evaluations/`.
 - Optionally set `model_pvc` when most exports live on the same claim.
 - Select generation settings and timeouts appropriate to the model. Defaults are
-  greedy decoding, seed 42, batch size 1, thinking off, 8,192 maximum input tokens,
-  and 8,192 new tokens. Keep settings fixed when comparing checkpoints.
+  the Qwen3-8B non-thinking profile: temperature 0.7, top-p 0.8, top-k 20,
+  min-p 0, seed 42, batch size 1, thinking off, 8,192 maximum input tokens,
+  and 12,288 new tokens. Keep settings fixed when comparing checkpoints.
+  For thinking mode set `enable_thinking = true`, `temperature = 0.6`, and
+  `top_p = 0.95`; keep top-k 20, min-p 0, and the same output budget.
+  These sampling profiles follow [Qwen3-8B guidance](https://huggingface.co/Qwen/Qwen3-8B#best-practices).
+  The 12,288 output-token limit is the lab budget, including reasoning and final
+  answer; Qwen recommends longer budgets generally. Input plus output must fit
+  the model context. Length-limited responses are recorded with `finish_reason: length`.
+  Generation currently uses Transformers; a vLLM server is not deployed by this workflow.
 
 The file is ignored by Git and contains image/claim/settings references, not
 registry tokens. Full paths, archive fingerprints, and settings are documented
@@ -241,7 +268,7 @@ export at `/data/exports/model-v1` means the relative path is `exports/model-v1`
 The claim and export must be accessible to the GPU worker in the same namespace.
 No model endpoint, API key, or manually chosen model label is required.
 
-Start with a ten-question pilot, replacing the example model locator:
+Start with a fourteen-question pilot, replacing the example model locator:
 
 ```bash
 uv run --no-sync math-eval nrp run \
@@ -287,7 +314,7 @@ math-eval/evaluations/EVALUATION-ID/
   request.json                Model locator, pinned suite/image references, settings
   pipeline.json               Stage, child Job names, completion/failure
   generation.json             Pointer to the immutable generation run
-  report.json                 Five scores + model/protocol/environment provenance
+  report.json                 Seven scores + model/protocol/environment provenance
   benchmarks.csv              Five rows for comparing checkpoint results
   runs/RUN-ID/
     run.json                  Model identity, settings, generation/grading state
@@ -346,7 +373,7 @@ support. Interactive coding/terminal solving also needs an appropriate Harbor
 agent/model connection; the existing math agent only replays saved predictions.
 
 The current math protocol is one unaided response per question with custom
-prompts/scorers, not an exact reproduction of each paper. AIME uses integer
+prompts/scorers, not an exact reproduction of each paper. AIME and BeyondAIME use integer
 comparison; other datasets use exact matching and pinned Math-Verify 0.9.0.
 Review automated-grader limitations and training overlap before interpreting scores.
 

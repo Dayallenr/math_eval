@@ -97,7 +97,8 @@ class TransformersGenerator:
                           num_beams=1, num_return_sequences=1, repetition_penalty=1.0,
                           pad_token_id=self.tokenizer.pad_token_id)
         if settings['temperature'] > 0:
-            generation.update(temperature=settings['temperature'], top_p=settings['top_p'], top_k=0)
+            generation.update(temperature=settings['temperature'], top_p=settings['top_p'],
+                              top_k=settings.get('top_k', 0), min_p=settings.get('min_p', 0.0))
         with torch.inference_mode():
             sequences = self.model.generate(**batch, **generation)
         eos = self.model.generation_config.eos_token_id

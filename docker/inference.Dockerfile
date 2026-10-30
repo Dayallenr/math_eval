@@ -5,9 +5,13 @@ COPY --from=uv /uv /usr/local/bin/uv
 COPY --from=kubectl /bin/kubectl /usr/local/bin/kubectl
 WORKDIR /opt/math-eval
 COPY pyproject.toml uv.lock README.md ./
+# Install the locked dependencies in their own layer. Plain RUN works with
+# Docker/BuildKit and NRP's Kaniko builder; no BuildKit cache mount is required.
+RUN UV_HTTP_TIMEOUT=300 uv sync --frozen --extra inference --extra grading \
+    --no-dev --no-install-project --no-cache
 COPY src ./src
-RUN --mount=type=cache,target=/root/.cache/uv \
-    UV_HTTP_TIMEOUT=300 uv sync --frozen --extra inference --extra grading --no-dev
+RUN UV_HTTP_TIMEOUT=300 uv sync --frozen --extra inference --extra grading \
+    --no-dev --no-editable --no-cache
 ENV PATH="/opt/math-eval/.venv/bin:$PATH" \
     HF_HOME=/tmp/huggingface \
     PYTHONUNBUFFERED=1

@@ -18,16 +18,16 @@ DEFAULTS = {
     'task_image': '', 'task_images': {}, 'harbor_service_account': 'math-eval-harbor',
     'sandbox_timeout': 1800, 'model_pvc': '', 'suite_pvc': 'shared-pvc', 'output_pvc': 'shared-pvc',
     'output_relative_path': 'math-eval/evaluations',
-    'suite_archive': 'math-eval/archives/math-five-51ba33d52138-pilot-65433b136342.tgz',
-    'archive_sha256': '899553e4869174b347dcd9924fef41528c3334be14c2750c524263400e1347ba',
-    'full_suite': 'math-five',
-    'full_sha256': '51ba33d52138a6593897ef0fe1169af4e7d5b34a90099389fe4b5efcdba7b217',
-    'pilot_suite': 'pilot',
-    'pilot_sha256': '65433b13634216d12811ba5776ed59d589a51e2207718822013400debf2c1207',
+    'suite_archive': 'math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz',
+    'archive_sha256': '208e3344aaba2a3e1be1fb6edd50eb8a28dd09a32f9213918148b277ecfd5643',
+    'full_suite': 'math-seven',
+    'full_sha256': 'b43163a56bb3944876ec01c781feedb8dcd4fcea74ca1d44491f17cd8c1ad121',
+    'pilot_suite': 'pilot-seven',
+    'pilot_sha256': 'b7a747d5908a0c2436c06c388fde4479816cb80bded0e292a0617123bccd88ce',
     'gpu_resource': 'nvidia.com/gpu', 'min_gpu_memory_mib': 40960, 'generation_timeout': 172800,
     'grading_timeout': 21600, 'poll_seconds': 10, 'grading_concurrency': 2,
-    'settings': {'batch_size': 1, 'max_new_tokens': 8192, 'max_input_tokens': 8192,
-                 'temperature': 0.0, 'top_p': 1.0, 'seed': 42,
+    'settings': {'batch_size': 1, 'max_new_tokens': 12288, 'max_input_tokens': 8192,
+                 'temperature': 0.7, 'top_p': 0.8, 'top_k': 20, 'min_p': 0.0, 'seed': 42,
                  'enable_thinking': False, 'device': 'cuda', 'dtype': 'auto'},
 }
 
@@ -74,6 +74,10 @@ def validate_config(config):
             raise ValueError(f'{key} must be a positive integer')
     if not all(math.isfinite(settings[k]) for k in ('temperature', 'top_p')) or settings['temperature'] < 0 or not 0 < settings['top_p'] <= 1:
         raise ValueError('Invalid sampling settings')
+    if type(settings['top_k']) is not int or settings['top_k'] < 0:
+        raise ValueError('top_k must be a nonnegative integer')
+    if not math.isfinite(settings['min_p']) or not 0 <= settings['min_p'] <= 1:
+        raise ValueError('min_p must be in [0,1]')
     if type(settings['seed']) is not int or type(settings['enable_thinking']) is not bool:
         raise ValueError('seed must be an integer and enable_thinking must be a boolean')
     if settings['device'] != 'cuda' or settings['dtype'] not in ('auto', 'bfloat16', 'float16', 'float32'):
