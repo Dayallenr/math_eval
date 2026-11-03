@@ -6,6 +6,15 @@
 __pycache__/
 *.py[cod]
 .cache/
+.pytest_cache/
+.ruff_cache/
+
+# macOS metadata and Python build output
+.DS_Store
+._*
+build/
+dist/
+*.egg-info/
 
 # Generated benchmark tasks and evaluation output
 suites/
@@ -14,3 +23,7 @@ jobs/
 
 # Local cluster defaults
 nrp.toml
+
+# Downloaded GitLab build artifacts
+runner-image.txt
+runner-digest.txt

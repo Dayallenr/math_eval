@@ -1,10 +1,11 @@
-# Build the evaluation runner on NRP GitLab
+# Optional: build the evaluation runner on NRP GitLab
 
 The destination project is <https://gitlab.nrp-nautilus.io/Dayallen/model-eval>.
 Its registry prefix is `gitlab-registry.nrp-nautilus.io/dayallen/model-eval`.
 The runner image will be published below that prefix as `math-eval:COMMIT-SHA`.
-This workflow builds only the evaluation runner; the separate math-task image is
-a later step. It does not start an evaluation or allocate a GPU.
+This optional workflow builds only the evaluation runner; the separate math-task
+image is a later step. It does not start an evaluation or allocate a GPU. If the
+runner is already published, skip building and use [direct NRP verification](nrp-verification.md).
 
 ## Upload the code once
 
@@ -28,18 +29,19 @@ credentials; never place a token in the remote URL or send it in chat.
 
 ## Start one runner build
 
-1. Open **Build → Pipelines** in the GitLab project.
-2. Select the pipeline for branch `evaluation-setup` and the commit you uploaded.
+1. Open **Build → Pipelines → New pipeline** in the GitLab project.
+2. Select branch `evaluation-setup` containing the commit you uploaded and create the pipeline.
 3. Select **Run/Play** next to the manual `build-runner` job.
 4. Watch the build log. A successful job prints the published image reference
    and saves `runner-image.txt` and `runner-digest.txt` as job artifacts.
-5. Let `verify-runner` complete. It pulls that exact commit's image, checks the
-   CLI and CUDA-enabled Torch installation, and runs the regression tests on CPU.
+5. Download `runner-image.txt`, then follow [direct NRP verification](nrp-verification.md)
+   using that image and its source commit. Verification runs in the lab namespace,
+   independently of GitLab's shared runners.
 
-Uploading code alone does not launch the build because the build job is manual.
-A blocked/manual pipeline at this point is expected. If no pipeline appears,
-use **Build → New pipeline** and select `evaluation-setup`. The default branch
-does not need to be changed for a branch pipeline to run.
+Uploading code alone does not create a pipeline. The workflow accepts only a
+pipeline explicitly started in the GitLab UI, and its build job is manual. The
+default branch does not need to be changed. Older commits keep their original
+pipeline configuration until this change is committed and pushed.
 
 The jobs use GitLab-provided `CI_REGISTRY_USER` and `CI_REGISTRY_PASSWORD` at
 runtime; no registry token is committed. NRP documents preconfigured shared
@@ -54,19 +56,21 @@ almost-full laptop. This build needs no permissions in `wang-research-lab`.
 
 ## Use the published reference after validation
 
-Only after **both** jobs pass, download `runner-image.txt` from `build-runner`.
+After the build passes, download `runner-image.txt` from `build-runner`.
 It contains a reference such as:
 
 ```text
 gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-eval@sha256:ACTUAL-DIGEST
 ```
 
-Use that actual reference for `image` in your ignored `nrp.toml`. Do not copy the
+Verify that actual reference on NRP before using it for `image` in your ignored
+`nrp.toml`. Do not copy the
 placeholder digest above. Each build uses the full source commit as its tag;
 the digest identifies the image bytes, including when a commit's build is retried.
 The pipeline also stores build-cache layers in the same project's `build-cache`
 repository. No `latest` tag is overwritten.
 
-Passing this pipeline validates the runner image on a CPU runner. A real NRP GPU
-pilot, the math-task image, pull access, and namespace ServiceAccounts/roles are
-still needed before a complete evaluation can be considered deployed.
+A successful build establishes image publication. Direct NRP verification checks
+the image and regression tests. A real NRP GPU pilot, the math-task image, pull
+access, and namespace ServiceAccounts/roles are still needed before a complete
+evaluation can be considered deployed.

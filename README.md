@@ -44,16 +44,16 @@ English EASY are excluded. Old five-benchmark scores are not comparable to this 
 Each question is an independent prompt; model weights stay fixed. Reference
 answers and oracle scripts are never passed to Qwen.
 
-**Deployment status:** the source includes the automated controller and Harbor
-NRP provider. Publishing the runner/task images, installing the namespace roles,
-and validating a real model on a GPU are required before production use. The 31 regression tests and a live three-task Harbor/AIME check on NRP passed;
-these use fixtures, not a trained model. The cluster check used the public Python
-image for integer scoring. Published images, noninteger scoring on NRP, and real
-GPU generation remain to be validated. The Linux math-task image also built
-locally and passed a symbolic scoring check. The runner build did not complete:
-the first attempt hit a download timeout, and the cached retry hit a local Docker
-storage I/O error with the laptop filesystem full. Validate the runner build on
-a builder with sufficient space before publishing.
+**Deployment status:** the published runner passed all 31 regression tests on an
+NRP CPU pod with no skips, including tiny Qwen3 generation. A live three-task
+Harbor/AIME fixture check also passed on NRP using a public Python image; the
+math-task image passed a local symbolic-scoring check. Production use still needs
+the separate math-task image published, namespace roles installed, and a real GPU
+pilot that validates generation and all scorers. See the
+[direct NRP verification record and guide](docs/nrp-verification.md).
+
+For each new model after setup, follow [Submit a completed model](#5-submit-a-completed-model).
+The first four sections cover prerequisites and reusable setup.
 
 ## 1. Install local tools
 
@@ -127,13 +127,15 @@ Torch build uses CUDA 12.8.
 
 ## 3. Publish two images once
 
-For the lab runner, use the prepared [remote GitLab build instructions](docs/gitlab-runner-build.md)
-and `.gitlab-ci.yml`. Upload the current code to the `evaluation-setup` branch of
-`Dayallen/model-eval`, then start its manual `build-runner` job. The following
-verification job tests the published image. No remote build has run yet. The
-manual Docker commands below are an alternative for a builder with enough space;
-they should not be run on the almost-full laptop. The math-task image is a separate
-publication step.
+The existing runner image can be verified directly in a CPU Job in the lab's NRP
+namespace; follow [direct NRP verification](docs/nrp-verification.md). No GitLab
+pipeline or local Docker build is needed to verify that published image.
+
+For future image builds, the [remote GitLab builder](docs/gitlab-runner-build.md)
+is optional and starts only when explicitly requested in the GitLab UI. Pushing
+code no longer creates a pipeline, and there is no GitLab `verify-runner` job.
+The Docker commands below are another option for a builder with enough space.
+The math-task image is a separate publication step.
 
 Skip building if a maintainer supplies compatible published runner and task image
 URLs/digests. Otherwise, choose a registry project you can push into. The lab
@@ -315,7 +317,7 @@ math-eval/evaluations/EVALUATION-ID/
   pipeline.json               Stage, child Job names, completion/failure
   generation.json             Pointer to the immutable generation run
   report.json                 Seven scores + model/protocol/environment provenance
-  benchmarks.csv              Five rows for comparing checkpoint results
+  benchmarks.csv              Seven benchmark rows for comparing checkpoint results
   runs/RUN-ID/
     run.json                  Model identity, settings, generation/grading state
     predictions.jsonl         Responses, extracted answers, token counts, finish reasons
@@ -378,7 +380,7 @@ comparison; other datasets use exact matching and pinned Math-Verify 0.9.0.
 Review automated-grader limitations and training overlap before interpreting scores.
 
 Implementation: [controller and worker explanation](docs/checkpoint-evaluation.md).
-Optional manual workflow: [generation plus laptop grading](docs/manual-evaluation.md).
+Optional debugging: [manual generation and grading](docs/manual-evaluation.md).
 To run the local regression tests:
 
 ```bash
@@ -389,3 +391,22 @@ uv run --no-sync python -m unittest discover -s tests -v
 The tiny random Qwen test checks model plumbing, not model quality. The `local`
 grading backend remains available for explicit debugging/manual use; the NRP
 workflow uses Harbor. The teaching example remains in `tasks/aime-example/`.
+
+## Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| `src/math_eval/` | Dataset adapters, inference, Harbor grading, reports, and NRP orchestration |
+| `docker/` | Runner and task image definitions |
+| `tests/` | Grading, model-loading, and orchestration regression checks |
+| `tasks/aime-example/` | Small teaching task for understanding the oracle and verifier |
+| `docs/` | Pipeline explanation, dataset sources/storage receipts, image build guide, permissions, and debugging |
+| `nrp.example.toml` | Team configuration template; copy to ignored `nrp.toml` |
+| `scripts/verify_nrp.py` | Verify a published runner directly in an NRP CPU Job |
+| `.gitlab-ci.yml` | Optional image builder started explicitly in the GitLab UI |
+| `pyproject.toml`, `uv.lock` | Package definition and reproducible dependencies |
+
+Generated suites, runs, Jobs, caches, downloaded build artifacts, and local
+configuration are ignored by Git. They are not part of the source tree to review
+or upload. Keep the stored benchmark receipts for provenance, including the
+clearly labeled historical five-benchmark receipt.

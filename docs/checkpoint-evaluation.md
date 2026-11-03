@@ -18,7 +18,7 @@ Follow the [README](../README.md) for installation and commands.
 | GPU worker (`inference.py`) | Loads the exported model once, prompts it with benchmark questions, and saves its responses. |
 | CPU Harbor worker (`results.py`) | Validates those saved responses, launches Harbor, collects rewards, and computes separate benchmark scores. |
 | NRP environment provider (`harbor_nrp.py`) | Implements Harbor's container lifecycle, command execution, and file transfer using Kubernetes task pods. |
-| SavedPredictionAgent | Replays a saved model response into the task container's `/app/answer.txt`. Does not invent an answer or use an oracle. |
+| SavedPredictionAgent | Writes the extracted final answer from a saved model response to `/app/answer.txt`. Does not invent an answer or use an oracle. |
 | Task verifier (`test.sh` and `grade.py`) | Reads the submitted answer, compares it to the reference, and writes reward/diagnostics. |
 | Oracle (`solution/solve.sh`) | Writes a known-correct answer for testing the harness. It is not used to evaluate the trained model. |
 
@@ -56,14 +56,14 @@ Use one fixed profile for the base, SFT and GRPO checkpoints being compared.
 The output budget includes reasoning and final answer and excludes input tokens.
 Transformers is the implemented inference backend; vLLM serving remains separate work.
 
-Harbor later runs the replay agent in each task pod. The agent writes the saved
-model response to the expected answer file. Harbor uploads/runs the verifier,
+Harbor later uses the replay agent to write the extracted final answer from the
+saved response into each task pod's answer file. Harbor uploads/runs the verifier,
 which has the reference answer. This separation allows expensive GPU generation
 to end before CPU grading begins. It also makes the exact response available for
 inspection. Seeing a reference in a task's tests does not mean the model saw it.
 
 `solve.sh` is only an oracle harness check. During real evaluation the command
-selects `math_eval.saved_agent:SavedPredictionAgent`, not Harbor's oracle agent.
+selects `math_eval.replay:SavedPredictionAgent`, not Harbor's oracle agent.
 The new NRP workflow always uses Harbor; it does not silently switch to the
 optional direct `local` grading backend if Harbor fails.
 

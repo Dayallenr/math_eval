@@ -2,13 +2,21 @@
 .venv
 __pycache__
 .cache
+.pytest_cache
+.ruff_cache
+.DS_Store
+._*
+build
+dist
+*.egg-info
 suites
 runs
 jobs
 tasks
 tests
-scripts
 docs
 .env
 
 nrp.toml
+runner-image.txt
+runner-digest.txt

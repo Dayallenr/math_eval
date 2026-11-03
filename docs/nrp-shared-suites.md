@@ -28,7 +28,8 @@ Do not use that old suite for new seven-benchmark comparisons.
 
 ## Default: generation and Harbor grading on NRP
 
-Use the [automatic NRP workflow](../README.md). Copy `nrp.example.toml` to
+First [verify the published runner directly on NRP](nrp-verification.md); this
+does not use GitLab CI or a GPU. Then use the [automatic NRP workflow](../README.md). Copy `nrp.example.toml` to
 `nrp.toml` and configure the published runner/task images and pull Secret. Keep
 these already-uploaded settings:
 

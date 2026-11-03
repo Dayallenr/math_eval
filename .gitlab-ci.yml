@@ -1,12 +1,12 @@
-# Uploading code creates a pipeline; select build-runner to start the build.
+# Optional remote image builder: start a pipeline manually in the GitLab UI.
 # NRP's shared runners use the maintained osscontainertools Kaniko fork.
 stages:
   - build
-  - verify
 
 workflow:
   rules:
-    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - when: never
 
 build-runner:
   stage: build
@@ -54,15 +54,4 @@ build-runner:
       - runner-digest.txt
     expire_in: 1 year
 
-verify-runner:
-  stage: verify
-  needs: [build-runner]
-  image:
-    name: "$CI_REGISTRY_IMAGE/math-eval:$CI_COMMIT_SHA"
-    entrypoint: [""]
-  timeout: 20m
-  script:
-    - math-eval nrp --help
-    - kubectl version --client
-    - python -c "import math_verify, torch, transformers; assert torch.version.cuda; print('Torch CUDA build:', torch.version.cuda)"
-    - PYTHONPATH=src python -m unittest discover -s tests -v
+# Verify the published image directly on NRP; see docs/nrp-verification.md.

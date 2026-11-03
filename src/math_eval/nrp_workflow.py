@@ -16,7 +16,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from .inference import generate_run
-from .nrp import dns_name, evaluation_path, job_for, request_hash, validate_config
+from .nrp import dns_name, job_for, request_hash, validate_config
 from .results import grade_run
 from .suite import load_suite
 
