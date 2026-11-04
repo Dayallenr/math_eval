@@ -67,6 +67,44 @@ Keep the suite identity and decoding settings fixed when comparing checkpoints.
 Claims cannot be mounted across namespaces; another namespace/cluster needs its
 own prepared storage and profile. Shared storage is not a backup.
 
+## Official Qwen3-8B baseline storage
+
+A dedicated 100 GiB `ReadWriteMany` model PVC, `math-eval-models`, is available in
+`wang-research-lab` using `rook-cephfs`. The unchanged official baseline is stored
+in its `Qwen3-8B` folder. Teammates do not need to create an export path or download
+this baseline again.
+
+| Setting | Value |
+| --- | --- |
+| Model PVC | `math-eval-models` |
+| Export path relative to PVC root | `Qwen3-8B` |
+| Evaluation model reference | `math-eval-models:Qwen3-8B` |
+| Official source | `Qwen/Qwen3-8B` |
+| Pinned source revision | `b968826d9c46dd6066d109eabc6255188de91218` |
+| Download receipt inside the model folder | `official-source.json` |
+
+A CPU-only staging Job downloaded approximately 16.4 GB directly from the
+[official pinned release](https://huggingface.co/Qwen/Qwen3-8B/tree/b968826d9c46dd6066d109eabc6255188de91218).
+It checked all expected file sizes, verified the official SHA-256 hashes for
+large files, and checked that the weight index, Qwen3 configuration, and tokenizer
+chat template were present. Only after verification did it rename the staging
+folder to `Qwen3-8B`. The receipt records the revision and every downloaded file's
+SHA-256 hash. No model weights were loaded and no GPU was used during staging.
+Local manifests, source metadata, download logs, and the verification receipt are
+saved under ignored `.cache/nrp/` in the setup checkout.
+
+After completing the README's laptop installation and NRP login, run the real
+fourteen-question pilot with:
+
+```bash
+uv run --no-sync math-eval nrp-laptop run --model math-eval-models:Qwen3-8B --pilot
+```
+
+This staging check establishes that the baseline files are complete; real GPU
+inference and pilot evaluation still need to pass. Future SFT/GRPO exports can use
+separate folders on this PVC, or their own PVCs. Keep an evaluated model folder
+unchanged and use a different folder for a new checkpoint/revision.
+
 ## Optional: download a local copy for manual debugging
 
 Only follow this section for the optional [manual workflow](manual-evaluation.md).

@@ -121,9 +121,14 @@ blindly. For private-image authentication errors, use the
 Obtain each model's **PVC name and path relative to that PVC's root**. For
 example, `model-pvc:exports/sft-with-labels` means the GPU pod loads that directory
 from `model-pvc`. Include full model weights, config, tokenizer, and chat template;
-merge/export adapter-only or raw optimizer checkpoints first. The unchanged
-official Qwen3-8B baseline also needs its weights staged on NRP storage once;
-this command does not download a Hub ID directly. There is no inference endpoint.
+merge/export adapter-only or raw optimizer checkpoints first.
+
+The official baseline is already staged for this lab at
+`math-eval-models:Qwen3-8B`; see its
+[storage location and verified source revision](docs/nrp-shared-suites.md#official-qwen3-8b-baseline-storage).
+You do not need to create a folder or download this baseline again. For another
+model, supply its completed export's PVC and folder path. The evaluation loads
+that existing directory directly, without an inference endpoint.
 
 The Qwen3-8B comparison settings remain: thinking off, temperature 0.7, top-p 0.8,
 top-k 20, min-p 0, seed 42, batch size 1, at most 8,192 input tokens and 12,288 new
