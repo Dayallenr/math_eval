@@ -204,3 +204,16 @@ are saved under ignored `.cache/nrp/laptop-verification.*` and
 `.cache/nrp/laptop-tests.log`. This verifies the transfer/grading/upload path with
 scripted answers. Loading a real exported model on an eligible GPU and running
 its fourteen-question pilot remains necessary.
+
+## Default pod authorization check
+
+A temporary CPU-only pod using the namespace's default ServiceAccount checked its
+own API access with SelfSubjectAccessReviews. All eight checks were denied:
+create/get/delete pods, exec into pods, read pod logs, and create/get/delete batch
+Jobs. It created no evaluation workloads and changed no roles. The probe was
+removed and its result is saved under ignored `.cache/nrp/default-pod-access.log`.
+This tests the default pod identity, not the user's laptop identity. Running a
+coordinator in a remote tmux session therefore still needs an authorized NRP
+login there, or an explicitly authorized service account. That remote setup is
+not yet deployed; the laptop workflow remains available with the user's current
+login.

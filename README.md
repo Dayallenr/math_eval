@@ -6,7 +6,7 @@ After that Job finishes and releases its GPU, Harbor grades the saved answers in
 isolated NRP CPU task pods. Seven benchmark scores are saved both locally and on
 the lab's shared storage.
 
-**Keep your laptop awake, connected, and the command running.** If interrupted,
+**When coordinating on your laptop, keep it awake, connected, and the command running.** If interrupted,
 resume the same evaluation ID; a completed generation is reused. The separate
 fully NRP-managed workflow is preserved on `nrp-controller-on-hold` while the
 team decides whether to install its service-account roles.
@@ -76,6 +76,25 @@ Local Torch/Transformers, a GPU, and Docker are not required. Both published
 images are reused. The grading extra is small; the large inference dependencies
 stay in the published NRP runner image. Use macOS/Linux or WSL2 for this branch.
 
+### Running the coordinator in remote tmux
+
+The coordinator can also run on a remote Linux machine or NRP CPU pod with the
+same repository, installed dependencies, persistent run workspace, and a working
+NRP user login. Tmux must run **on that remote machine**; a remote session can
+continue after the laptop sleeps or shuts down while the remote host stays up.
+Tmux running locally does not keep the laptop's code executing during sleep.
+See [the tmux guide](https://github.com/tmux/tmux/wiki/Getting-Started).
+
+A default NRP pod does not inherit your laptop's login. A live check in this
+namespace confirmed that the default ServiceAccount cannot create/read/delete
+Jobs or task pods, exec into pods, or read their logs. Remote coordination using
+your existing user login requires that login to be configured inside the remote
+host; tmux does not supply API authorization. NRP documents
+[headless device-code login](https://nrp.ai/documentation/userdocs/start/getting-started/).
+No new administrator roles have been installed. This checkout currently runs the
+coordinator locally; a remote tmux coordinator has not yet been deployed or
+validated. Until that setup is complete, follow the laptop-awake instructions.
+
 ## 2. Connect to NRP
 
 Keep an existing working kubeconfig. Check your access:
@@ -123,12 +142,15 @@ example, `model-pvc:exports/sft-with-labels` means the GPU pod loads that direct
 from `model-pvc`. Include full model weights, config, tokenizer, and chat template;
 merge/export adapter-only or raw optimizer checkpoints first.
 
-The official baseline is already staged for this lab at
-`math-eval-models:Qwen3-8B`; see its
-[storage location and verified source revision](docs/nrp-shared-suites.md#official-qwen3-8b-baseline-storage).
-You do not need to create a folder or download this baseline again. For another
-model, supply its completed export's PVC and folder path. The evaluation loads
-that existing directory directly, without an inference endpoint.
+The current requested baseline is **your Qwen3-8B checkpoint trained with SFT
+without dataset labels**. It is already staged at
+`math-eval-models:Qwen3-8B-SFT-no-labels`; see its
+[verified source and storage location](docs/nrp-shared-suites.md#requested-sft-baseline-without-dataset-labels).
+You do not need to create its folder or download it again. The unchanged official
+Qwen3-8B release is also available at `math-eval-models:Qwen3-8B` as a control
+without additional lab training. For another model, supply its completed export's PVC and folder path.
+The evaluation loads that existing directory directly, without an inference
+endpoint.
 
 The Qwen3-8B comparison settings remain: thinking off, temperature 0.7, top-p 0.8,
 top-k 20, min-p 0, seed 42, batch size 1, at most 8,192 input tokens and 12,288 new

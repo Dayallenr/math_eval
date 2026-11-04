@@ -67,6 +67,44 @@ Keep the suite identity and decoding settings fixed when comparing checkpoints.
 Claims cannot be mounted across namespaces; another namespace/cluster needs its
 own prepared storage and profile. Shared storage is not a backup.
 
+## Requested SFT baseline without dataset labels
+
+The current evaluation target is the user's **Qwen3-8B model trained with SFT
+without dataset labels**, published at
+[Dayallen/WANG_Lab_Baseline_Model](https://huggingface.co/datasets/Dayallen/WANG_Lab_Baseline_Model).
+It is a complete checkpoint stored in a Hugging Face **dataset repository**;
+the `/datasets/` URL does not mean its contents are training questions. The
+training description comes from the user; staging checks the files, not the
+history of the training run.
+
+| Setting | Value |
+| --- | --- |
+| Model PVC / namespace | `math-eval-models` / `wang-research-lab` |
+| Export path relative to PVC root | `Qwen3-8B-SFT-no-labels` |
+| Evaluation model reference | `math-eval-models:Qwen3-8B-SFT-no-labels` |
+| Hugging Face repository type | `dataset` |
+| Pinned source revision | `26519d9bcaaa09e01f53e0046c6811365b1855d4` |
+| Receipt inside the checkpoint folder | `checkpoint-source.json` |
+
+A CPU-only staging Job downloaded the six inference files directly to the PVC:
+`model.safetensors`, `config.json`, `generation_config.json`, `tokenizer.json`,
+`tokenizer_config.json`, and `chat_template.jinja`. It checked file sizes, hashed
+bytes while downloading, verified the repository's SHA-256 values for large
+files, and checked the Qwen3 configuration, safetensors header/bounds, and chat
+template. The complete folder was published only after those checks passed.
+No model inference or GPU evaluation has run for this checkpoint yet.
+
+Run its fourteen-question pilot from an authenticated coordinator:
+
+```bash
+uv run --no-sync math-eval nrp-laptop run \
+  --model math-eval-models:Qwen3-8B-SFT-no-labels --pilot
+```
+
+The pinned source, deployment manifest, complete download log, and receipt are
+saved under ignored `.cache/nrp/sft-baseline-*` in the setup checkout. The
+unchanged official model documented below is a separate comparison checkpoint.
+
 ## Official Qwen3-8B baseline storage
 
 A dedicated 100 GiB `ReadWriteMany` model PVC, `math-eval-models`, is available in
