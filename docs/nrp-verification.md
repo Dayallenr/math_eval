@@ -176,3 +176,31 @@ helper supplied in their command.
 
 A real model export and GPU pilot are still required before claiming the complete
 model evaluation is validated. Scripted CPU fixtures validate orchestration only.
+
+## Live laptop workflow check
+
+On November 3, 2026 (Pacific time; November 4 UTC), evaluation
+`math-eval-laptop-check-20261104042901-a8ba` passed the laptop workflow on NRP:
+14 scripted responses, two per benchmark, seven separate reports, and zero
+infrastructure errors. The check exercised archive staging and fingerprint
+validation, saved-response download, Harbor task-pod execution, report upload to
+`shared-pvc`, and an interrupted grading retry that reused the saved responses.
+No GPU was requested, no model weights were loaded, and no Roles, RoleBindings,
+or dedicated ServiceAccounts were installed. Scripted fixture files replaced
+inference; their metadata is explicitly marked `generation_kind = test_fixture`.
+Their zero accuracy scores are diagnostic outputs, not a model baseline.
+
+The check initially exposed duplicate volume definitions for a shared PVC; the
+laptop manifests now reuse one claim volume while preserving read-only dataset
+and model mounts. To avoid repeated image downloads during the diagnostic,
+retried Harbor task pods used the existing NRP provider with only a test-specific
+node selector for a cached CPU node. Normal evaluation scheduling is unchanged.
+The earlier CUDA-image fixture attempt was stopped while downloading its image.
+All diagnostic Jobs/pods were deleted; fixture reports remain in their own
+uniquely named evaluation directory.
+
+The complete log, receipt, local regression log, and compressed Harbor diagnostics
+are saved under ignored `.cache/nrp/laptop-verification.*` and
+`.cache/nrp/laptop-tests.log`. This verifies the transfer/grading/upload path with
+scripted answers. Loading a real exported model on an eligible GPU and running
+its fourteen-question pilot remains necessary.

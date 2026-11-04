@@ -237,7 +237,8 @@ kubectl --context nautilus -n wang-research-lab get pods -l math-eval/evaluation
 
 The published runner passed 31 tests in an NRP CPU Job. The published task image
 passed seven live Harbor grading checks, including symbolic equivalence and
-wrong/missing answers. This branch adds recovery/transfer/ordering tests; see
+wrong/missing answers. This branch also passed a live fourteen-response scripted workflow, including
+resume, Harbor grading, and report upload, plus recovery/transfer/ordering tests; see
 [the validation record](docs/nrp-verification.md). Scripted fixture results are
 harness checks, not scores for any of the four real models. A real GPU pilot is
 still required once a model export is available.
