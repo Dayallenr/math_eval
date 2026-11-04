@@ -44,13 +44,13 @@ English EASY are excluded. Old five-benchmark scores are not comparable to this 
 Each question is an independent prompt; model weights stay fixed. Reference
 answers and oracle scripts are never passed to Qwen.
 
-**Deployment status:** the published runner passed all 31 regression tests on an
-NRP CPU pod with no skips, including tiny Qwen3 generation. A live three-task
-Harbor/AIME fixture check also passed on NRP using a public Python image; the
-math-task image passed a local symbolic-scoring check. Production use still needs
-the separate math-task image published, namespace roles installed, and a real GPU
-pilot that validates generation and all scorers. See the
-[direct NRP verification record and guide](docs/nrp-verification.md).
+**Deployment status:** both images are published. The runner passed all 31
+regression tests on an NRP CPU pod with no skips, including tiny Qwen3 generation.
+The published math-task image passed seven live Harbor grading checks on NRP,
+covering symbolic equivalence, integer answers, wrong answers, and missing answers.
+Those checks used scripted responses, not model benchmark scores. Production use
+still needs the namespace roles installed and a real GPU pilot that validates
+generation and all scorers. See the [verification record](docs/nrp-verification.md).
 
 For each new model after setup, follow [Submit a completed model](#5-submit-a-completed-model).
 The first four sections cover prerequisites and reusable setup.
@@ -127,9 +127,11 @@ Torch build uses CUDA 12.8.
 
 ## 3. Publish two images once
 
-The existing runner image can be verified directly in a CPU Job in the lab's NRP
-namespace; follow [direct NRP verification](docs/nrp-verification.md). No GitLab
-pipeline or local Docker build is needed to verify that published image.
+Both images are already published and pinned in `nrp.example.toml`. For the
+existing lab namespace, reuse those image digests and `nrp-registry-dayallen`;
+no image build or push is needed for a new model. The ignored local `nrp.toml`
+can be copied from that template. See [direct NRP verification](docs/nrp-verification.md)
+for the completed checks and how to verify a future runner image.
 
 For future image builds, the [remote GitLab builder](docs/gitlab-runner-build.md)
 is optional and starts only when explicitly requested in the GitLab UI. Pushing

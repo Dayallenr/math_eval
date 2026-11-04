@@ -193,14 +193,17 @@ Harbor environment interface against a recorded API. The controller fixture test
 uses synthetic generation and patches the Harbor invocation; it is a local
 orchestration test rather than a cluster model score.
 
-A live CPU-only NRP smoke check also ran Harbor against three pinned AIME tasks
-using deliberately correct, incorrect, and missing saved responses. Harbor
-returned the expected 1/0/0 rewards with zero infrastructure errors and cleaned
-up all three task pods. This used `python:3.12-slim` for integer-only grading; it
-does not validate the published task image or the noninteger scorer on NRP.
+A live CPU-only check ran Harbor against seven scripted tasks using the published
+math-task image pinned in `nrp.example.toml`. It accepted equivalent symbolic and
+zero-padded integer answers and rejected deliberately wrong or missing answers,
+returning all seven expected rewards with zero infrastructure errors and zero
+retries. Harbor coordinated on the laptop's CPU for this diagnostic; the isolated
+task containers ran on NRP and were removed afterward. These are harness checks,
+not real model benchmark scores or a test of the cluster controller permissions.
 
-Before production use, publish the runner/math-task images to a writable registry,
-configure pull credentials and have a namespace administrator install the
-[namespace roles](nrp-rbac.json), then run the pilot using a real
-lab model export. Local builds and fixtures do not establish CUDA/VRAM compatibility
+The published runner separately passed all 31 regression tests in an NRP CPU Job,
+including tiny random Qwen3 generation. Both image digests are pinned in the team
+template. Before production use, have a namespace administrator install the
+[namespace roles](nrp-rbac.json), then run the pilot using a real lab model export.
+Local builds and fixtures do not establish CUDA/VRAM compatibility
 or real-checkpoint behavior. See the current README deployment status.

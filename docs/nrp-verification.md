@@ -107,12 +107,52 @@ or Kubernetes API token. The image-pull Secret is used by Kubernetes to download
 the image, not mounted into the test process. This follows
 [NRP's CPU workload guidance](https://nrp.ai/documentation/userdocs/running/cpu-only/).
 
-A pass validates the runner on CPU. The separate math-task image, controller and
-Harbor permissions, and a real fourteen-question GPU pilot remain deployment
-steps; this check does not establish GPU compatibility or benchmark accuracy.
+A pass validates the runner on CPU. Controller/Harbor permissions and a real
+fourteen-question GPU pilot remain deployment steps; this check does not
+establish GPU compatibility or benchmark accuracy. The separate published
+math-task image check is recorded below.
 Continue with the [README setup](../README.md#4-configure-the-team-profile-and-controller-permissions-once).
 
 The GitLab builder remains an optional future image-building method. After the
 updated `.gitlab-ci.yml` is committed and pushed, normal pushes do not create a
 pipeline; explicit UI builds are still available. Old running jobs are not
 automatically cancelled by this local change.
+
+## Published grading image check
+
+The math-task image also passed seven live Harbor checks on NRP on November 3,
+2026 (UTC), using the digest pinned in `nrp.example.toml`:
+
+```text
+gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-task@sha256:0893dbcc6500a1f19957e43e5a9cf1528c9b62470ffd091702d504312c1f9c1d
+```
+
+The diagnostic used scripted saved responses: one correct, one wrong, and one
+missing answer each for symbolic math and AIME-style integers, plus one correct
+large BeyondAIME integer. All seven rewards matched expectations (three ones,
+four zeros), with no infrastructure errors or retries. The symbolic check
+accepted `0.5` for `1/2`. The integer checks accepted leading zeros.
+
+Harbor coordinated on the laptop CPU for this diagnostic and launched at most two
+isolated task pods at a time on NRP. No model or GPU was used. All test pods were
+removed. The local log, receipt, and compressed task diagnostics are saved under
+ignored `.cache/nrp/task-image-verification.*`. These results validate the
+published image and real task-pod grading path; they are not model accuracy
+measurements or a test of the entire cluster controller.
+
+The ignored `nrp.toml` and the team template now use both published image digests
+and the existing `nrp-registry-dayallen` pull Secret. The shared benchmark PVC is
+still Bound with ReadWriteMany access.
+
+The next prerequisite is a namespace administrator installing the two dedicated
+service accounts and scoped roles. The checked-in manifest matches the generated
+profile. From a checkout of this repository, the administrator runs:
+
+```bash
+kubectl --context nautilus apply -f docs/nrp-rbac.json
+```
+
+The requesting user's account can create task pods but cannot create Roles in
+`wang-research-lab`; the dedicated `math-eval-controller` and `math-eval-harbor`
+service accounts are not installed yet. A new model export location and a real
+fourteen-question GPU pilot are needed after the permissions are installed.

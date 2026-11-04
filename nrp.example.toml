@@ -1,11 +1,12 @@
-# Copy to nrp.toml (ignored by Git). Fill in the published image.
+# Published lab images: copy to nrp.toml (ignored by Git).
+# These digests passed CPU/Harbor checks; namespace roles and a GPU pilot are still required.
 context = "nautilus"
 namespace = "wang-research-lab"
-image = "YOUR-REGISTRY/YOUR-PROJECT/math-eval:nrp-v2"
-image_pull_secret = "nrp-registry" # Empty string for a publicly pullable image.
+image = "gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-eval@sha256:386537c9ee80c892ce19984508b48f443c57481ef650b91c5428a1d5e9ca7b42"
+image_pull_secret = "nrp-registry-dayallen" # Empty string for a publicly pullable image.
 service_account = "math-eval-controller"
 harbor_service_account = "math-eval-harbor"
-task_image = "YOUR-REGISTRY/YOUR-PROJECT/math-task:nrp-v2"
+task_image = "gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-task@sha256:0893dbcc6500a1f19957e43e5a9cf1528c9b62470ffd091702d504312c1f9c1d"
 sandbox_timeout = 1800
 # Optional: enables --model exports/model-v1 instead of PVC:exports/model-v1.
 model_pvc = ""
