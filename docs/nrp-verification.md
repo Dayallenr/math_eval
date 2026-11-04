@@ -214,8 +214,8 @@ Jobs. It created no evaluation workloads and changed no roles. The probe was
 removed and its result is saved under ignored `.cache/nrp/default-pod-access.log`.
 This tests the default pod identity, not the user's laptop identity. Running a
 coordinator in a remote tmux session therefore still needs an authorized NRP
-login there, or an explicitly authorized service account. The remote CPU Deployment is now installed; its own browser login is
-required before it can submit workers. The laptop workflow remains available
+login there, or an explicitly authorized service account. The remote CPU
+Deployment is now installed and authenticated using the user's browser login. The laptop workflow remains available
 with the user's current login.
 
 ## Remote CPU coordinator with tmux
@@ -224,8 +224,8 @@ The CPU-only `math-eval-remote-dayallen` Deployment was created using the user's
 existing permissions. It requests no GPU, mounts `shared-pvc` for run state, and
 disables automatic ServiceAccount-token mounting. Source and locked grading
 dependencies were installed on ephemeral storage; user tokens are not copied
-from the laptop or stored on the shared PVC. Login uses NRP's standard browser flow with a temporary loopback
-port-forward, under the user's existing identity. No Roles, RoleBindings, or new
+from the laptop or stored on the shared PVC. Login uses NRP's standard browser
+flow with a temporary loopback port-forward, under the user's existing identity. No Roles, RoleBindings, or new
 ServiceAccounts were installed.
 
 Verified inside the running host: Python 3.12.16, kubectl 1.34.1, kubelogin
@@ -240,8 +240,19 @@ and `.cache/nrp/remote-local-tests.log`.
 The device-code page rejected the federated UCSC identity with “Interface can
 only be accessed by internal users.” The setup now uses the normal browser
 authorization-code flow through a temporary localhost callback tunnel. The
-user's interactive remote login and the subsequent API-permission check
-remain pending. No real GPU model evaluation has been submitted in this setup
+user's interactive remote login succeeded. All eight remote API checks passed:
+create/get/delete Jobs, create/get/delete pods, exec into pods, and read pod logs.
+The authenticated host can read the shared PVC and prepare the trained-model
+pilot manifest. No real GPU model evaluation has been submitted in this setup
 step; its fourteen-question pilot is still required. Follow the
 [remote tmux instructions](nrp-remote-tmux.md) for login, pilot, results, resume,
 and cleanup commands.
+
+The authenticated remote host also ran two real Harbor trials using saved
+scripted answers for the example AIME task: the correct answer received reward
+1, and an incorrect answer received reward 0, with no infrastructure exceptions.
+Harbor created and removed isolated CPU task pods using the user's remote login.
+These are packaging/grading diagnostics, not model benchmark scores. The receipt
+and trial archive are saved under ignored `.cache/nrp/remote-verification.json`
+and `.cache/nrp/remote-harbor-smoke.tgz`. The temporary localhost login tunnel was
+closed after authentication; the CPU tmux coordinator remains ready for use.
