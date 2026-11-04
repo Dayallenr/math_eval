@@ -28,7 +28,9 @@ Do not use that old suite for new seven-benchmark comparisons.
 
 ## This branch: laptop-managed Harbor with NRP workers
 
-Follow the [laptop workflow](../README.md). Both images and all suite/archive
+For a coordinator that keeps running when your laptop disconnects, use the
+[remote NRP tmux workflow](nrp-remote-tmux.md). The [laptop workflow](../README.md)
+remains available. Both images and all suite/archive
 fingerprints are pinned in `nrp.example.toml`; preserve these shared settings:
 
 ```toml

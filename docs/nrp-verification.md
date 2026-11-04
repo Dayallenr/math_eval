@@ -214,6 +214,31 @@ Jobs. It created no evaluation workloads and changed no roles. The probe was
 removed and its result is saved under ignored `.cache/nrp/default-pod-access.log`.
 This tests the default pod identity, not the user's laptop identity. Running a
 coordinator in a remote tmux session therefore still needs an authorized NRP
-login there, or an explicitly authorized service account. That remote setup is
-not yet deployed; the laptop workflow remains available with the user's current
-login.
+login there, or an explicitly authorized service account. The remote CPU Deployment is now installed; its own browser login is
+required before it can submit workers. The laptop workflow remains available
+with the user's current login.
+
+## Remote CPU coordinator with tmux
+
+The CPU-only `math-eval-remote-dayallen` Deployment was created using the user's
+existing permissions. It requests no GPU, mounts `shared-pvc` for run state, and
+disables automatic ServiceAccount-token mounting. Source and locked grading
+dependencies were installed on ephemeral storage; user tokens are not copied
+from the laptop or stored on the shared PVC. Login uses NRP's browser device-code
+flow under the user's existing identity. No Roles, RoleBindings, or new
+ServiceAccounts were installed.
+
+Verified inside the running host: Python 3.12.16, kubectl 1.34.1, kubelogin
+1.36.4, tmux 3.5a, a detached tmux background task, and a dry-run manifest for
+`math-eval-models:Qwen3-8B-SFT-no-labels`. Both the local and remote regression
+suites discovered 45 tests: 44 passed, and one optional Torch/Transformers model
+smoke test was skipped because this CPU coordinator intentionally lacks the
+inference extra. The earlier published-runner verification covers that tiny
+model smoke test. Logs are saved under ignored `.cache/nrp/remote-tests.log`
+and `.cache/nrp/remote-local-tests.log`.
+
+The user's interactive remote login and the subsequent API-permission check
+remain pending. No real GPU model evaluation has been submitted in this setup
+step; its fourteen-question pilot is still required. Follow the
+[remote tmux instructions](nrp-remote-tmux.md) for login, pilot, results, resume,
+and cleanup commands.

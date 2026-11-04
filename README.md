@@ -78,22 +78,16 @@ stay in the published NRP runner image. Use macOS/Linux or WSL2 for this branch.
 
 ### Running the coordinator in remote tmux
 
-The coordinator can also run on a remote Linux machine or NRP CPU pod with the
-same repository, installed dependencies, persistent run workspace, and a working
-NRP user login. Tmux must run **on that remote machine**; a remote session can
-continue after the laptop sleeps or shuts down while the remote host stays up.
-Tmux running locally does not keep the laptop's code executing during sleep.
-See [the tmux guide](https://github.com/tmux/tmux/wiki/Getting-Started).
+To run the coordinator inside an NRP CPU pod so your laptop can sleep or shut
+down, follow the [remote tmux instructions](docs/nrp-remote-tmux.md). The helper
+creates a CPU-only Deployment, installs the tools, and uses your existing NRP
+user login through a browser device-code flow. It does not install administrator
+roles. Model files and benchmark suites are already staged on NRP.
 
-A default NRP pod does not inherit your laptop's login. A live check in this
-namespace confirmed that the default ServiceAccount cannot create/read/delete
-Jobs or task pods, exec into pods, or read their logs. Remote coordination using
-your existing user login requires that login to be configured inside the remote
-host; tmux does not supply API authorization. NRP documents
-[headless device-code login](https://nrp.ai/documentation/userdocs/start/getting-started/).
-No new administrator roles have been installed. This checkout currently runs the
-coordinator locally; a remote tmux coordinator has not yet been deployed or
-validated. Until that setup is complete, follow the laptop-awake instructions.
+Remote tmux survives a laptop disconnect while its pod stays running. The
+persistent workspace supports resuming after pod replacement. Local tmux does
+not keep a sleeping laptop executing. The laptop instructions below remain
+available for local coordination.
 
 ## 2. Connect to NRP
 
