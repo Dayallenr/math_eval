@@ -213,7 +213,7 @@ def kubectl(config, arguments, document=None):
     return result.stdout
 
 
-def preflight(request):
+def preflight(request, require_accounts=True):
     config = request['config']
     names = list(dict.fromkeys([request['model_pvc'], config['suite_pvc'], config['output_pvc']]))
     claims = json.loads(kubectl(config, ['get', 'pvc', *names, '-o', 'json']))
@@ -224,7 +224,8 @@ def preflight(request):
             raise ValueError(f'PVC {name} must exist and be Bound in {config["namespace"]}')
     if 'ReadWriteMany' not in by_name[config['output_pvc']]['spec']['accessModes']:
         raise ValueError('The output PVC must support ReadWriteMany: controller and workers mount it together')
-    kubectl(config, ['get', 'serviceaccount', config['service_account'], config['harbor_service_account'], '-o', 'name'])
+    if require_accounts:
+        kubectl(config, ['get', 'serviceaccount', config['service_account'], config['harbor_service_account'], '-o', 'name'])
 
 
 def add_parser(subparsers):

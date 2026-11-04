@@ -7,7 +7,7 @@ from pathlib import Path
 from .inference import generate_run
 from .results import grade_run
 from .suite import SOURCES, prepare
-from . import nrp
+from . import nrp, laptop
 
 
 def positive_int(value: str) -> int:
@@ -51,6 +51,7 @@ def main() -> None:
     grade.add_argument('--backend', choices=('harbor', 'local'), default='harbor')
     grade.add_argument('--concurrency', type=positive_int, default=2)
     nrp.add_parser(sub)
+    laptop.add_parser(sub)
     controller = sub.add_parser('nrp-controller', help='Internal cluster controller')
     controller.add_argument('--request-json', required=True)
     worker = sub.add_parser('nrp-worker', help='Internal cluster worker')
@@ -58,7 +59,9 @@ def main() -> None:
     worker.add_argument('--evaluation-dir', type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.command == 'nrp':
+        if args.command == 'nrp-laptop':
+            laptop.handle(args)
+        elif args.command == 'nrp':
             nrp.handle(args)
         elif args.command == 'nrp-controller':
             import json

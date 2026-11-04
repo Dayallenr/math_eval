@@ -107,11 +107,11 @@ or Kubernetes API token. The image-pull Secret is used by Kubernetes to download
 the image, not mounted into the test process. This follows
 [NRP's CPU workload guidance](https://nrp.ai/documentation/userdocs/running/cpu-only/).
 
-A pass validates the runner on CPU. Controller/Harbor permissions and a real
-fourteen-question GPU pilot remain deployment steps; this check does not
-establish GPU compatibility or benchmark accuracy. The separate published
+A pass validates the runner on CPU. A real fourteen-question GPU pilot remains
+a deployment step; dedicated controller permissions apply only to the held
+NRP-controller workflow. This check does not establish GPU compatibility or benchmark accuracy. The separate published
 math-task image check is recorded below.
-Continue with the [README setup](../README.md#4-configure-the-team-profile-and-controller-permissions-once).
+Continue with the [README setup](../README.md#3-configure-the-existing-images-and-model-location).
 
 The GitLab builder remains an optional future image-building method. After the
 updated `.gitlab-ci.yml` is committed and pushed, normal pushes do not create a
@@ -144,8 +144,14 @@ The ignored `nrp.toml` and the team template now use both published image digest
 and the existing `nrp-registry-dayallen` pull Secret. The shared benchmark PVC is
 still Bound with ReadWriteMany access.
 
-The next prerequisite is a namespace administrator installing the two dedicated
-service accounts and scoped roles. The checked-in manifest matches the generated
+## Controller workflow on hold
+
+The administrator step below applies only to the fully NRP-managed workflow on
+`nrp-controller-on-hold`. The active `laptop-orchestration` workflow uses the
+user's local kubeconfig and does not require these dedicated accounts or roles.
+
+Resuming the controller workflow requires a namespace administrator installing
+the two dedicated service accounts and scoped roles. The checked-in manifest matches the generated
 profile. From a checkout of this repository, the administrator runs:
 
 ```bash
@@ -156,3 +162,17 @@ The requesting user's account can create task pods but cannot create Roles in
 `wang-research-lab`; the dedicated `math-eval-controller` and `math-eval-harbor`
 service accounts are not installed yet. A new model export location and a real
 fourteen-question GPU pilot are needed after the permissions are installed.
+
+## Laptop coordinator regression checks
+
+The laptop branch adds eleven regression tests for transfer validation, separate
+benchmark reports, GPU-before-Harbor ordering, request identity, interrupted
+grading, cancellation, and recovery after a lost create/upload response. The
+local suite passes 41 tests; the tiny real Qwen test is skipped locally because
+Torch/Transformers are not installed. The published runner separately passed
+that test as recorded above. No new image build is needed for this branch: new
+coordinator code runs locally, and temporary transfer pods use a standard-library
+helper supplied in their command.
+
+A real model export and GPU pilot are still required before claiming the complete
+model evaluation is validated. Scripted CPU fixtures validate orchestration only.

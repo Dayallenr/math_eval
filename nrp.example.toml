@@ -1,5 +1,6 @@
 # Published lab images: copy to nrp.toml (ignored by Git).
-# These digests passed CPU/Harbor checks; namespace roles and a GPU pilot are still required.
+# These digests passed CPU/Harbor checks. A real model GPU pilot is still required.
+# nrp-laptop uses your login; the service_account fields apply only to the NRP controller mode.
 context = "nautilus"
 namespace = "wang-research-lab"
 image = "gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-eval@sha256:386537c9ee80c892ce19984508b48f443c57481ef650b91c5428a1d5e9ca7b42"

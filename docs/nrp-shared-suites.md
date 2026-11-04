@@ -26,12 +26,10 @@ runs; [its historical receipt](nrp-shared-suites-legacy.json) records those file
 Do not use that old suite for new seven-benchmark comparisons.
 [The current receipt](nrp-shared-suites.json) records the new fingerprints.
 
-## Default: generation and Harbor grading on NRP
+## This branch: laptop-managed Harbor with NRP workers
 
-First [verify the published runner directly on NRP](nrp-verification.md); this
-does not use GitLab CI or a GPU. Then use the [automatic NRP workflow](../README.md). Copy `nrp.example.toml` to
-`nrp.toml` and configure the published runner/task images and pull Secret. Keep
-these already-uploaded settings:
+Follow the [laptop workflow](../README.md). Both images and all suite/archive
+fingerprints are pinned in `nrp.example.toml`; preserve these shared settings:
 
 ```toml
 namespace = "wang-research-lab"
@@ -40,26 +38,28 @@ output_pvc = "shared-pvc"
 suite_archive = "math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz"
 ```
 
-Keep the archive/full/pilot SHA-256 values from the example unchanged. Install the
-controller and Harbor namespace roles once, then supply a completed model export:
+Run with a completed export on NRP storage:
 
 ```bash
-uv run --no-sync math-eval nrp run --model YOUR-MODEL-PVC:exports/model-v1 --pilot
-# After inspecting a successful pilot, submit the full suite:
-uv run --no-sync math-eval nrp run --model YOUR-MODEL-PVC:exports/model-v1
+uv run --no-sync math-eval nrp-laptop run --model YOUR-MODEL-PVC:exports/model-v1 --pilot
+# After inspecting a successful pilot:
+uv run --no-sync math-eval nrp-laptop run --model YOUR-MODEL-PVC:exports/model-v1
 ```
 
-The controller starts the GPU worker, waits for generation, then starts Harbor
-on a CPU worker. Both workers mount the suite PVC read-only, copy the one pinned
-archive to temporary container disk, and validate its contents and fingerprints.
-Harbor creates isolated task pods and runs each verifier there. Reports and
-compressed Harbor diagnostics are saved in a unique evaluation directory under
-`shared-pvc/math-eval/evaluations/`.
+No new namespace roles or service accounts are needed. Your laptop submits the
+GPU Job and waits, then runs Harbor using your existing Kubernetes login. Harbor
+starts isolated CPU task pods on NRP. Keep the laptop awake and connected.
 
-**No benchmark download or upload is required on a teammate's laptop.** The
-laptop submits Jobs and reads status/report logs. These stored files alone do not
-mean deployment is complete: published images, namespace roles, and a real model
-pilot must also be validated. See the README's deployment status.
+**You do not manually download or upload benchmark datasets.** This mode
+copies the small pinned archive to the laptop automatically so Harbor can upload
+task files, and validates the archive, task inventory, and selected suite hashes.
+It also fetches saved model responses automatically and uploads final reports and
+compressed grading diagnostics to a unique directory under
+`shared-pvc/math-eval/evaluations/`. Model weights stay on NRP.
+
+The fully NRP-managed controller is preserved on `nrp-controller-on-hold`; that
+mode keeps running after the laptop disconnects and requires the dedicated
+namespace roles. It is not started by `nrp-laptop`.
 
 The suite is immutable. Do not edit/regenerate it in place or delete the PVC.
 A new benchmark version needs a new archive, directory, and pinned fingerprints.
@@ -70,7 +70,7 @@ own prepared storage and profile. Shared storage is not a backup.
 ## Optional: download a local copy for manual debugging
 
 Only follow this section for the optional [manual workflow](manual-evaluation.md).
-The automated NRP workflow does not need it. Skip the download if local
+The `nrp-laptop` command performs its own transfer and does not need this manual step. Skip the download if local
 `load_suite` validation already matches both hashes below. These commands use a separate temporary CPU
 pod mounting only the suite PVC read-only. No model, inference image, registry
 secret, or GPU is needed for this download. They follow NRP's

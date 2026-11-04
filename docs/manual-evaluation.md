@@ -7,7 +7,7 @@ private-image authentication and troubleshooting.
 
 ## Prepare a local environment and suite
 
-Use the [README's installation steps](../README.md#1-install-local-tools), then
+Use the [README's installation steps](../README.md#1-install-the-laptop-tools), then
 install the extras required for local inference and symbolic grading:
 
 ```bash
@@ -180,7 +180,7 @@ to that name. Never commit the token or kubeconfig. See
 ## Troubleshooting
 
 For NRP jobs, first use the
-[status and log commands](../README.md#6-results-failures-and-cleanup).
+[status and log commands](../README.md#5-results-interruptions-and-cleanup).
 Inspect the affected pod's events with `kubectl --context nautilus -n
 wang-research-lab describe pod POD-NAME`.
 

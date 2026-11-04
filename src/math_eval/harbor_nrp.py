@@ -14,9 +14,10 @@ from harbor.environments.capabilities import EnvironmentCapabilities, Environmen
 
 
 class NRPEnvironment(BaseEnvironment):
-    def __init__(self, *args, namespace, image_map=None, image_pull_secret='',
+    def __init__(self, *args, namespace, context='', image_map=None, image_pull_secret='',
                  evaluation_id='', owner_job='', owner_uid='', sandbox_timeout=1800, **kwargs):
         self.namespace = namespace
+        self.context = context
         self.image_map = image_map or {}
         self.image_pull_secret = image_pull_secret
         self.evaluation_id = evaluation_id
@@ -75,6 +76,7 @@ class NRPEnvironment(BaseEnvironment):
         if self.task_env_config.workdir:
             container['workingDir'] = self.task_env_config.workdir
         pod = {'restartPolicy': 'Never', 'automountServiceAccountToken': False,
+               'nodeSelector': {'kubernetes.io/arch': 'amd64'},
                'activeDeadlineSeconds': self.sandbox_timeout,
                'containers': [container],
                'affinity': {'nodeAffinity': {'requiredDuringSchedulingIgnoredDuringExecution': {
@@ -86,7 +88,10 @@ class NRPEnvironment(BaseEnvironment):
         return {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': metadata, 'spec': pod}
 
     async def _kubectl(self, arguments, *, payload=None, timeout=60, check=True):
-        command = ['kubectl', '--namespace', self.namespace, '--request-timeout=30s', *arguments]
+        command = ['kubectl']
+        if self.context:
+            command.extend(['--context', self.context])
+        command.extend(['--namespace', self.namespace, '--request-timeout=30s', *arguments])
         process = await asyncio.create_subprocess_exec(*command,
                     stdin=asyncio.subprocess.PIPE if payload is not None else asyncio.subprocess.DEVNULL,
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)

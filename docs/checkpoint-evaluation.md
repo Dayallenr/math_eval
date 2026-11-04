@@ -1,3 +1,7 @@
+> On branch `laptop-orchestration`, use `math-eval nrp-laptop` and the
+> [README](../README.md). The cluster-controller design below is preserved for
+> `nrp-controller-on-hold`; its roles are not needed by the laptop workflow.
+
 # How the NRP evaluation pipeline works
 
 The input is a finished Hugging Face model export on an NRP PVC. The output is
