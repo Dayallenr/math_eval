@@ -224,8 +224,8 @@ The CPU-only `math-eval-remote-dayallen` Deployment was created using the user's
 existing permissions. It requests no GPU, mounts `shared-pvc` for run state, and
 disables automatic ServiceAccount-token mounting. Source and locked grading
 dependencies were installed on ephemeral storage; user tokens are not copied
-from the laptop or stored on the shared PVC. Login uses NRP's browser device-code
-flow under the user's existing identity. No Roles, RoleBindings, or new
+from the laptop or stored on the shared PVC. Login uses NRP's standard browser flow with a temporary loopback
+port-forward, under the user's existing identity. No Roles, RoleBindings, or new
 ServiceAccounts were installed.
 
 Verified inside the running host: Python 3.12.16, kubectl 1.34.1, kubelogin
@@ -237,7 +237,10 @@ inference extra. The earlier published-runner verification covers that tiny
 model smoke test. Logs are saved under ignored `.cache/nrp/remote-tests.log`
 and `.cache/nrp/remote-local-tests.log`.
 
-The user's interactive remote login and the subsequent API-permission check
+The device-code page rejected the federated UCSC identity with “Interface can
+only be accessed by internal users.” The setup now uses the normal browser
+authorization-code flow through a temporary localhost callback tunnel. The
+user's interactive remote login and the subsequent API-permission check
 remain pending. No real GPU model evaluation has been submitted in this setup
 step; its fourteen-question pilot is still required. Follow the
 [remote tmux instructions](nrp-remote-tmux.md) for login, pilot, results, resume,

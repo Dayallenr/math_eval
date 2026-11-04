@@ -13,6 +13,8 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
+import time
 import tarfile
 import tomllib
 
@@ -35,7 +37,8 @@ def public_login(config):
     args = [arg for arg in existing['args'][2:] if arg.startswith(prefixes)]
     if not any(a.startswith('--oidc-issuer-url=') for a in args) or not any(a.startswith('--oidc-client-id=') for a in args):
         raise ValueError('Missing public OIDC issuer/client ID settings')
-    args += ['--grant-type=device-code', '--skip-open-browser', '--token-cache-storage=disk']
+    args += ['--grant-type=authcode', '--skip-open-browser', '--token-cache-storage=disk',
+             '--listen-address=127.0.0.1:18000', '--authentication-timeout-sec=600']
     cluster = source['clusters'][0]['cluster']
     cluster = {key: cluster[key] for key in ('server', 'certificate-authority-data') if key in cluster}
     if not cluster.get('server', '').startswith('https://') or 'certificate-authority-data' not in cluster:
@@ -147,9 +150,34 @@ def main():
     if args.command == 'logs':
         subprocess.run([*base, 'logs', pod, '--tail=50'], check=True)
     elif args.command == 'login':
-        # kubectl consumes the plugin token; only the browser instructions are printed.
-        subprocess.run([*base, 'exec', '-it', pod, '--', 'kubectl', '--context', config['context'],
-                        '-n', config['namespace'], 'get', 'pvc', config['output_pvc']], check=True)
+        # Forward only loopback for the standard OIDC browser callback. NRP's
+        # device-code interface can reject federated institutional accounts.
+        with tempfile.TemporaryFile(mode='w+') as log:
+            forward = subprocess.Popen([*base, 'port-forward', pod, '18000:18000',
+                                        '--address=127.0.0.1'], stdout=log, stderr=log)
+            try:
+                for _ in range(150):
+                    log.seek(0)
+                    output = log.read()
+                    if forward.poll() is not None:
+                        raise RuntimeError('Could not open browser callback tunnel: ' + output)
+                    if 'Forwarding from 127.0.0.1:18000' in output:
+                        break
+                    time.sleep(0.2)
+                else:
+                    raise RuntimeError('Browser callback tunnel did not become ready')
+                print('Open the displayed login URL on THIS laptop; keep this command running until login completes.', flush=True)
+                # kubectl consumes the plugin token; only browser instructions
+                # and the PVC listing reach the terminal.
+                subprocess.run([*base, 'exec', '-it', pod, '--', 'kubectl', '--context', config['context'],
+                                '-n', config['namespace'], 'get', 'pvc', config['output_pvc']], check=True)
+            finally:
+                forward.terminate()
+                try:
+                    forward.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    forward.kill()
+                    forward.wait()
     elif args.command == 'check':
         checks = [('create', 'jobs.batch'), ('get', 'jobs.batch'), ('delete', 'jobs.batch'),
                   ('create', 'pods'), ('get', 'pods'), ('delete', 'pods'), ('create', 'pods/exec'), ('get', 'pods/log')]

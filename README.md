@@ -81,7 +81,7 @@ stay in the published NRP runner image. Use macOS/Linux or WSL2 for this branch.
 To run the coordinator inside an NRP CPU pod so your laptop can sleep or shut
 down, follow the [remote tmux instructions](docs/nrp-remote-tmux.md). The helper
 creates a CPU-only Deployment, installs the tools, and uses your existing NRP
-user login through a browser device-code flow. It does not install administrator
+user login through the standard browser flow. It does not install administrator
 roles. Model files and benchmark suites are already staged on NRP.
 
 Remote tmux survives a laptop disconnect while its pod stays running. The

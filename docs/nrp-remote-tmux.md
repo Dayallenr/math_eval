@@ -48,14 +48,22 @@ shared PVC storage. The model weights are not mounted in this CPU host.
 .venv/bin/python scripts/remote_coordinator.py login
 ```
 
-Open the displayed device-login URL in your laptop's browser, enter the code if
-requested, and sign in using the same NRP account that can access
+Keep the command running and open the displayed login URL in a browser **on this
+same laptop**. Sign in using the same NRP account that can access
 `wang-research-lab`. For UCSC, choose CILogon if prompted, select University of
 California, Santa Cruz, then sign in with CruzID and complete campus MFA. This is
-the normal NRP
-[headless login flow](https://nrp.ai/documentation/userdocs/start/getting-started/).
-Do not paste tokens or passwords into Git, chat, or shared storage. If the code
-expires, rerun `login` to obtain a fresh one.
+the standard NRP
+[browser login flow](https://nrp.ai/documentation/userdocs/start/getting-started/).
+Do not paste tokens or passwords into Git, chat, or shared storage. If the login
+expires, rerun `login` to obtain a fresh URL.
+
+The helper temporarily forwards `127.0.0.1:18000` on your laptop to the same
+loopback port in the pod for the browser callback. It closes this connection
+after login; no public service is exposed. Leave local port 18000 free while
+logging in. The callback logs you into the remote pod, rather than only into the
+NRP website. NRP's separate device-code page rejected this federated UCSC
+account with “Interface can only be accessed by internal users,” so this setup
+uses the standard browser flow instead.
 
 Then verify remote access and the pilot configuration:
 

@@ -24,9 +24,10 @@ class RemoteCoordinatorTests(unittest.TestCase):
             login = remote.public_login({'context': 'nautilus', 'namespace': 'lab'})
         self.assertNotIn('SECRET', json.dumps(login))
         args = login['users'][0]['user']['exec']['args']
-        self.assertIn('--grant-type=device-code', args)
+        self.assertIn('--grant-type=authcode', args)
         self.assertIn('--skip-open-browser', args)
-        self.assertFalse(any(a.startswith('--listen-address') for a in args))
+        self.assertIn('--listen-address=127.0.0.1:18000', args)
+        self.assertNotIn('--listen-address=127.0.0.1:8000', args)
         self.assertEqual(login['contexts'][0]['context']['namespace'], 'lab')
 
     def test_host_has_no_gpu_or_automatic_service_account_token(self):
