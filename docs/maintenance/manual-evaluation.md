@@ -1,23 +1,22 @@
 # Manual evaluation and debugging
 
-For normal model evaluations, follow the [automated NRP workflow](../README.md).
+For normal model evaluations, follow the [automated NRP workflow](../../README.md).
 It runs generation and Harbor grading on the cluster. This guide covers the
 existing CLI commands for deliberately running those stages yourself, plus
 private-image authentication and troubleshooting.
 
 ## Prepare a local environment and suite
 
-Use the [README's installation steps](../README.md#1-install-the-laptop-tools), then
+Use the [README's installation steps](../../README.md#setup), then
 install the extras required for local inference and symbolic grading:
 
 ```bash
 uv sync --locked --extra inference --extra grading
 ```
 
-For the lab's exact suite, use the optional
-[shared-suite download instructions](nrp-shared-suites.md#optional-download-a-local-copy-for-manual-debugging).
-Keep the full suite and pilot separate. Downloading them is only needed for
-local debugging; normal NRP evaluations reuse the stored archive directly.
+The prepared NRP suites are described in [shared storage](../nrp-shared-suites.md).
+For local debugging, prepare the same pinned sources in a fresh directory below.
+Normal evaluations stage the existing archive automatically in the remote host.
 
 To prepare a new suite instead, use a new output directory:
 
@@ -180,7 +179,7 @@ to that name. Never commit the token or kubeconfig. See
 ## Troubleshooting
 
 For NRP jobs, first use the
-[status and log commands](../README.md#5-results-interruptions-and-cleanup).
+[status and log commands](../nrp-remote-tmux.md#terminal-and-progress-tips).
 Inspect the affected pod's events with `kubectl --context nautilus -n
 wang-research-lab describe pod POD-NAME`.
 
@@ -203,6 +202,6 @@ wang-research-lab describe pod POD-NAME`.
 | Many zeros / cutoff responses | Inspect full responses, extracted answers, chat template, thinking mode, and output budget. |
 | Existing grading attempt | Use the grading-only retry procedure above; preserve the previous attempt. |
 
-The [pipeline explanation](checkpoint-evaluation.md) covers scoring, provenance,
-module roles, and remaining deployment validation. The
-[benchmark source record](benchmark-sources.md) identifies the exact releases.
+The [pipeline explanation](../architecture.md) covers scoring, provenance,
+module roles, and integrity checks. The
+[benchmark source record](../benchmark-sources.md) identifies the exact releases.

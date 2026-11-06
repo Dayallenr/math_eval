@@ -1,258 +1,75 @@
-# Verify the existing runner directly on NRP
+# Validation
 
-This replaces GitLab's `verify-runner` job. Use an already-published image; no
-rebuild, local Docker installation, dataset download, or model is required.
-The check runs in `wang-research-lab`, where lab members can inspect pod events.
+The standard remote NRP workflow has completed a real model evaluation, in
+addition to unit tests, published-image checks, and scripted Harbor checks.
 
-## Verified runner
+## Completed baseline evaluation
 
-The existing runner passed on NRP on November 3, 2026 (UTC): **31 tests passed,
-zero skips**, including real tiny Qwen3 save/load/generation on CPU. Source files
-matched commit `b31ae3442a4bbce816ace113cb7da08ef4605a26`. Job
-`math-eval-verify-20261103070714-6355` completed with exit code 0. The command below
-uses the immutable image digest observed in that successful pod.
+| Field | Value |
+| --- | --- |
+| Evaluation ID | `math-eval-20261104071253-7a384f` |
+| Model | `math-eval-models:Qwen3-8B-SFT-no-labels` |
+| Source | `Dayallen/WANG_Lab_Baseline_Model` |
+| Model source revision | `26519d9bcaaa09e01f53e0046c6811365b1855d4` |
+| Full-suite SHA256 | `b43163a56bb3944876ec01c781feedb8dcd4fcea74ca1d44491f17cd8c1ad121` |
+| GPU | One NVIDIA L40S, approximately 48 GB VRAM |
+| Generation | 823 saved responses |
+| Grading | 823 completed, zero remaining infrastructure errors |
+| Reports | Complete and uploaded to `shared-pvc` |
 
-This checkout saves the full log and receipt under ignored
-`.cache/nrp/runner-verification.log` and `.cache/nrp/runner-verification.json`.
-Reusing this exact image does not require rerunning verification for each model.
-A new runner image should be verified again.
+| Benchmark | Correct | Accuracy |
+| --- | ---: | ---: |
+| MATH-500 | 422/500 | 84.4% |
+| BeyondAIME | 14/100 | 14% |
+| OlymMATH English HARD | 3/100 | 3% |
+| HMMT February 2025 | 4/30 | 13.3% |
+| HMMT February 2026 | 6/33 | 18.2% |
+| AIME 2025 | 6/30 | 20% |
+| AIME 2026 | 6/30 | 20% |
 
-## Submit the check
+Scores use all questions, including missing final answers and truncated
+responses. This is the repository's single-response protocol, not a
+reproduction of another publication's prompting or sampling.
 
-Run from the repository root after completing the README's NRP login setup.
-The helper uses only Python's standard library, Git, and `kubectl`.
+One MATH-500 trial initially failed because NRP's Kueue admission webhook timed
+out before the task pod was created. A targeted Harbor retry recovered that
+trial. All 823 saved predictions and the other 822 valid grades were preserved;
+GPU generation was not repeated. The previous failed trial and recovery receipt
+remain in the run's `recovery-*` directory. Shared-storage file verification was
+slow; a live Python process alone should not be reported as a completed retry.
 
-```bash
-python3 scripts/verify_nrp.py submit \
-  --image gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-eval@sha256:386537c9ee80c892ce19984508b48f443c57481ef650b91c5428a1d5e9ca7b42 \
-  --commit b31ae3442a4bbce816ace113cb7da08ef4605a26 \
-  --pull-secret nrp-registry-dayallen
-```
-
-`nrp-registry-dayallen` must authorize image pulls from `dayallen/model-eval`.
-The Secret name alone does not establish access. If necessary, follow the
-[hidden credential prompt](manual-evaluation.md#private-image-only-configure-pull-credentials)
-and pass the Secret name you created. Never put a token in the command or Git.
-Pass `--pull-secret ''` only for an image that is publicly pullable.
-
-For a future image, replace **both** `--image` and `--commit` with the matching
-published image and source commit available in this checkout. A digest is
-preferred over a mutable tag. Uncommitted edits are not uploaded: the helper
-packages tests from the selected Git commit and checks that the image's installed
-Python source matches that commit. This prevents testing different code by mistake.
-
-Add `--dry-run` to print the ConfigMap and Job manifests without cluster access.
-Optional `--context` and `--namespace` go before `submit` or `status`.
-
-## Inspect the result
-
-Submission returns a unique name beginning `math-eval-verify-` and exits. Use
-that actual name below:
+View the final report inside remote tmux:
 
 ```bash
-python3 scripts/verify_nrp.py status YOUR-VERIFICATION-JOB
+evalctl results math-eval-20261104071253-7a384f
 ```
 
-This prints the job/pod state, image digest once pulled, recent test logs, and
-pod events. An initial `Pending` phase can mean the image is still downloading;
-events identify image-pull, scheduling, and container errors. A registry
-`unauthorized` error requires correcting pull credentials, then submitting a
-new check. Do not repeatedly restart a pod that is still downloading normally.
+## Infrastructure and regression checks
 
-To follow the full test log after the container starts:
+- The published GPU runner passed 31 tests in an NRP CPU verification Job,
+  including a tiny real Qwen save/load/generation test. No large baseline model
+  was needed for that check.
+- The CPU task image passed seven live Harbor checks covering correct, wrong,
+  missing, integer, and symbolic answers.
+- The coordinator test suite discovered 45 tests: 44 passed and the optional
+  Torch/Transformers test skipped in the CPU-only coordinator environment. These
+  are the recorded pre-cleanup counts; rerun the current suite after changes.
+- The user-authenticated workflow passed a fourteen-response scripted end-to-end
+  check, including archive validation, saved-response recovery, Harbor grading,
+  and report upload. Scripted results are not model benchmark scores.
+- The remote host passed tmux-disconnection, permission, pilot-preview, and two
+  live saved-answer Harbor checks with rewards 1 and 0.
+- The default pod ServiceAccount could not perform the required eight worker API
+  operations. The remote host instead authenticated as the existing user via the
+  browser callback flow. No administrator roles were installed.
 
-```bash
-kubectl --context nautilus -n wang-research-lab logs \
-  -f job/YOUR-VERIFICATION-JOB
-```
+The pinned runner source commit is `b31ae3442a4bbce816ace113cb7da08ef4605a26`.
+Image digests remain in `nrp.example.toml`. The current coordinator source is
+copied by the remote-host helper, independently of the older GPU image. Image
+verification must use the exact source commit used for that image; current
+checkout source is not automatically identical to a pinned published image.
 
-Success requires the Job to complete successfully and its log to contain
-`VERIFICATION PASSED: ... tests; no skips`. An image that starts successfully
-but fails a test is not verified. Preserve the complete log and actual image
-digest for any failure report:
-
-```bash
-mkdir -p .cache/nrp
-kubectl --context nautilus -n wang-research-lab logs \
-  job/YOUR-VERIFICATION-JOB > .cache/nrp/runner-verification.log
-```
-
-After preserving the result, remove only this verifier's Job and owned ConfigMap:
-
-```bash
-python3 scripts/verify_nrp.py cleanup YOUR-VERIFICATION-JOB
-```
-
-The job also expires automatically seven days after finishing. It has a one-hour
-deadline including startup; its pending time is not limited by GitLab's shared
-runner `poll_timeout`.
-
-## What is checked
-
-- The installed Python source matches the requested image-build commit.
-- The CLI and bundled `kubectl` start, CUDA-enabled Torch imports, and Harbor is
-  the pinned version.
-- All committed regression tests pass without skips, including a tiny randomly
-  initialized Qwen3 model that loads and generates a padded batch on CPU.
-
-The image does not contain the tests, so the helper mounts a small immutable
-ConfigMap containing the tests, teaching grader fixture, and verification script.
-The tests exercise the image's installed code. Nothing is installed at runtime.
-Model/dataset Hub access is disabled during the check; the tiny model is created
-locally inside the container and has no meaningful benchmark score.
-
-This is one CPU Job requesting 2 CPUs, 4 GiB RAM, and 25 GiB temporary storage.
-It selects AMD64 CPU nodes and requests no GPU. It mounts no PVC, model, dataset,
-or Kubernetes API token. The image-pull Secret is used by Kubernetes to download
-the image, not mounted into the test process. This follows
-[NRP's CPU workload guidance](https://nrp.ai/documentation/userdocs/running/cpu-only/).
-
-A pass validates the runner on CPU. A real fourteen-question GPU pilot remains
-a deployment step; dedicated controller permissions apply only to the held
-NRP-controller workflow. This check does not establish GPU compatibility or benchmark accuracy. The separate published
-math-task image check is recorded below.
-Continue with the [README setup](../README.md#3-configure-the-existing-images-and-model-location).
-
-The GitLab builder remains an optional future image-building method. After the
-updated `.gitlab-ci.yml` is committed and pushed, normal pushes do not create a
-pipeline; explicit UI builds are still available. Old running jobs are not
-automatically cancelled by this local change.
-
-## Published grading image check
-
-The math-task image also passed seven live Harbor checks on NRP on November 3,
-2026 (UTC), using the digest pinned in `nrp.example.toml`:
-
-```text
-gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-task@sha256:0893dbcc6500a1f19957e43e5a9cf1528c9b62470ffd091702d504312c1f9c1d
-```
-
-The diagnostic used scripted saved responses: one correct, one wrong, and one
-missing answer each for symbolic math and AIME-style integers, plus one correct
-large BeyondAIME integer. All seven rewards matched expectations (three ones,
-four zeros), with no infrastructure errors or retries. The symbolic check
-accepted `0.5` for `1/2`. The integer checks accepted leading zeros.
-
-Harbor coordinated on the laptop CPU for this diagnostic and launched at most two
-isolated task pods at a time on NRP. No model or GPU was used. All test pods were
-removed. The local log, receipt, and compressed task diagnostics are saved under
-ignored `.cache/nrp/task-image-verification.*`. These results validate the
-published image and real task-pod grading path; they are not model accuracy
-measurements or a test of the entire cluster controller.
-
-The ignored `nrp.toml` and the team template now use both published image digests
-and the existing `nrp-registry-dayallen` pull Secret. The shared benchmark PVC is
-still Bound with ReadWriteMany access.
-
-## Controller workflow on hold
-
-The administrator step below applies only to the fully NRP-managed workflow on
-`nrp-controller-on-hold`. The active `laptop-orchestration` workflow uses the
-user's local kubeconfig and does not require these dedicated accounts or roles.
-
-Resuming the controller workflow requires a namespace administrator installing
-the two dedicated service accounts and scoped roles. The checked-in manifest matches the generated
-profile. From a checkout of this repository, the administrator runs:
-
-```bash
-kubectl --context nautilus apply -f docs/nrp-rbac.json
-```
-
-The requesting user's account can create task pods but cannot create Roles in
-`wang-research-lab`; the dedicated `math-eval-controller` and `math-eval-harbor`
-service accounts are not installed yet. A new model export location and a real
-fourteen-question GPU pilot are needed after the permissions are installed.
-
-## Laptop coordinator regression checks
-
-The laptop branch adds eleven regression tests for transfer validation, separate
-benchmark reports, GPU-before-Harbor ordering, request identity, interrupted
-grading, cancellation, and recovery after a lost create/upload response. The
-local suite passes 41 tests; the tiny real Qwen test is skipped locally because
-Torch/Transformers are not installed. The published runner separately passed
-that test as recorded above. No new image build is needed for this branch: new
-coordinator code runs locally, and temporary transfer pods use a standard-library
-helper supplied in their command.
-
-A real model export and GPU pilot are still required before claiming the complete
-model evaluation is validated. Scripted CPU fixtures validate orchestration only.
-
-## Live laptop workflow check
-
-On November 3, 2026 (Pacific time; November 4 UTC), evaluation
-`math-eval-laptop-check-20261104042901-a8ba` passed the laptop workflow on NRP:
-14 scripted responses, two per benchmark, seven separate reports, and zero
-infrastructure errors. The check exercised archive staging and fingerprint
-validation, saved-response download, Harbor task-pod execution, report upload to
-`shared-pvc`, and an interrupted grading retry that reused the saved responses.
-No GPU was requested, no model weights were loaded, and no Roles, RoleBindings,
-or dedicated ServiceAccounts were installed. Scripted fixture files replaced
-inference; their metadata is explicitly marked `generation_kind = test_fixture`.
-Their zero accuracy scores are diagnostic outputs, not a model baseline.
-
-The check initially exposed duplicate volume definitions for a shared PVC; the
-laptop manifests now reuse one claim volume while preserving read-only dataset
-and model mounts. To avoid repeated image downloads during the diagnostic,
-retried Harbor task pods used the existing NRP provider with only a test-specific
-node selector for a cached CPU node. Normal evaluation scheduling is unchanged.
-The earlier CUDA-image fixture attempt was stopped while downloading its image.
-All diagnostic Jobs/pods were deleted; fixture reports remain in their own
-uniquely named evaluation directory.
-
-The complete log, receipt, local regression log, and compressed Harbor diagnostics
-are saved under ignored `.cache/nrp/laptop-verification.*` and
-`.cache/nrp/laptop-tests.log`. This verifies the transfer/grading/upload path with
-scripted answers. Loading a real exported model on an eligible GPU and running
-its fourteen-question pilot remains necessary.
-
-## Default pod authorization check
-
-A temporary CPU-only pod using the namespace's default ServiceAccount checked its
-own API access with SelfSubjectAccessReviews. All eight checks were denied:
-create/get/delete pods, exec into pods, read pod logs, and create/get/delete batch
-Jobs. It created no evaluation workloads and changed no roles. The probe was
-removed and its result is saved under ignored `.cache/nrp/default-pod-access.log`.
-This tests the default pod identity, not the user's laptop identity. Running a
-coordinator in a remote tmux session therefore still needs an authorized NRP
-login there, or an explicitly authorized service account. The remote CPU
-Deployment is now installed and authenticated using the user's browser login. The laptop workflow remains available
-with the user's current login.
-
-## Remote CPU coordinator with tmux
-
-The CPU-only `math-eval-remote-dayallen` Deployment was created using the user's
-existing permissions. It requests no GPU, mounts `shared-pvc` for run state, and
-disables automatic ServiceAccount-token mounting. Source and locked grading
-dependencies were installed on ephemeral storage; user tokens are not copied
-from the laptop or stored on the shared PVC. Login uses NRP's standard browser
-flow with a temporary loopback port-forward, under the user's existing identity. No Roles, RoleBindings, or new
-ServiceAccounts were installed.
-
-Verified inside the running host: Python 3.12.16, kubectl 1.34.1, kubelogin
-1.36.4, tmux 3.5a, a detached tmux background task, and a dry-run manifest for
-`math-eval-models:Qwen3-8B-SFT-no-labels`. Both the local and remote regression
-suites discovered 45 tests: 44 passed, and one optional Torch/Transformers model
-smoke test was skipped because this CPU coordinator intentionally lacks the
-inference extra. The earlier published-runner verification covers that tiny
-model smoke test. Logs are saved under ignored `.cache/nrp/remote-tests.log`
-and `.cache/nrp/remote-local-tests.log`.
-
-The device-code page rejected the federated UCSC identity with “Interface can
-only be accessed by internal users.” The setup now uses the normal browser
-authorization-code flow through a temporary localhost callback tunnel. The
-user's interactive remote login succeeded. All eight remote API checks passed:
-create/get/delete Jobs, create/get/delete pods, exec into pods, and read pod logs.
-The authenticated host can read the shared PVC and prepare the trained-model
-pilot manifest. No real GPU model evaluation has been submitted in this setup
-step; its fourteen-question pilot is still required. Follow the
-[remote tmux instructions](nrp-remote-tmux.md) for login, pilot, results, resume,
-and cleanup commands.
-
-The authenticated remote host also ran two real Harbor trials using saved
-scripted answers for the example AIME task: the correct answer received reward
-1, and an incorrect answer received reward 0, with no infrastructure exceptions.
-Harbor created and removed isolated CPU task pods using the user's remote login.
-These are packaging/grading diagnostics, not model benchmark scores. The receipt
-and trial archive are saved under ignored `.cache/nrp/remote-verification.json`
-and `.cache/nrp/remote-harbor-smoke.tgz`. The temporary localhost login tunnel was
-closed after authentication; the CPU tmux coordinator remains ready for use.
+Local diagnostic logs are ignored under `.cache/nrp/`; authoritative responses,
+trial records, reports, and checkpoint receipts remain on NRP storage. See
+[maintenance](maintenance/README.md) for regression and image-verification
+commands.

@@ -1,6 +1,7 @@
 [project]
 name = "math-eval"
 version = "0.1.0"
+description = "Reproducible math benchmark evaluation with Harbor and NRP."
 requires-python = ">=3.12"
 dependencies = [
     "huggingface-hub>=1.31,<2",

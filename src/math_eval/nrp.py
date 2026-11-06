@@ -229,7 +229,7 @@ def preflight(request, require_accounts=True):
 
 
 def add_parser(subparsers):
-    nrp = subparsers.add_parser('nrp', help='Submit and inspect automated NRP evaluations')
+    nrp = subparsers.add_parser('nrp', help='Legacy controller commands; normal evaluations use the remote tmux host')
     nrp.add_argument('--config', type=Path, default=Path('nrp.toml'))
     commands = nrp.add_subparsers(dest='nrp_command', required=True)
     setup = commands.add_parser('setup', help='Install controller and Harbor ServiceAccounts and namespace roles once')

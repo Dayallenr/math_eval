@@ -1,254 +1,110 @@
-# Reuse the lab's uploaded math benchmarks
+# Shared benchmarks and checkpoints
 
-The prepared full suite and pilot were uploaded and verified on NRP on
-October 29, 2026. Teammates with access to `wang-research-lab` can reuse them for
-later checkpoints. No dataset upload or new suite PVC is needed for each model.
+The standard [remote NRP workflow](nrp-remote-tmux.md) reuses prepared benchmarks
+and exported model checkpoints. Evaluators supply a model reference; they do not
+upload datasets again for every run.
+
+## Benchmark storage
 
 | Setting | Value |
 | --- | --- |
-| Kubernetes context | `nautilus` |
-| Namespace | `wang-research-lab` |
-| Existing suite PVC | `shared-pvc` |
+| Context / namespace | `nautilus` / `wang-research-lab` |
+| Suite and output PVC | `shared-pvc` |
 | Storage class / access | `rook-cephfs` / `ReadWriteMany` |
-| Full suite path relative to PVC root | `math-eval/suites/math-seven` |
-| Pilot path relative to PVC root | `math-eval/suites/pilot-seven` |
-| Downloadable archive relative to PVC root | `math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz` |
-| Verification receipt relative to PVC root | `math-eval/shared-suite-seven.json` |
+| Full suite | `math-eval/suites/math-seven` |
+| Pilot suite | `math-eval/suites/pilot-seven` |
+| Archive | `math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz` |
+| Receipt on PVC | `math-eval/shared-suite-seven.json` |
 
-The full suite contains **823 questions** across the seven benchmarks requested
-from the screenshot: MATH-500 500, BeyondAIME 100, OlymMATH English HARD 100,
-HMMT February 2025 30, HMMT February 2026 33, AIME 2025 30, and AIME 2026 30.
-The pilot has two per benchmark, fourteen total. These are the complete pinned
-releases, not the screenshot's unidentified 20-question samples.
+[The checked-in receipt](nrp-shared-suites.json) records archive and suite
+fingerprints. The full release has 823 questions across seven benchmarks; the
+pilot has fourteen. [Benchmark provenance](benchmark-sources.md) lists the
+upstream revisions, selections, counts, and scoring rules.
 
-The previous five-benchmark suite and archive remain available unchanged for old
-runs; [its historical receipt](nrp-shared-suites-legacy.json) records those files.
-Do not use that old suite for new seven-benchmark comparisons.
-[The current receipt](nrp-shared-suites.json) records the new fingerprints.
+The remote coordinator copies the small archive automatically, verifies it, and
+installs the task files in its persistent workspace. Model weights stay on NRP.
+Do not edit a pinned suite in place. A new benchmark version needs a new archive,
+path, and fingerprints. Historical five-benchmark files remain on the PVC for old
+runs; their receipt is retained in Git history rather than presented as another
+active configuration.
 
-## This branch: laptop-managed Harbor with NRP workers
-
-For a coordinator that keeps running when your laptop disconnects, use the
-[remote NRP tmux workflow](nrp-remote-tmux.md). The [laptop workflow](../README.md)
-remains available. Both images and all suite/archive
-fingerprints are pinned in `nrp.example.toml`; preserve these shared settings:
-
-```toml
-namespace = "wang-research-lab"
-suite_pvc = "shared-pvc"
-output_pvc = "shared-pvc"
-suite_archive = "math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz"
-```
-
-Run with a completed export on NRP storage:
-
-```bash
-uv run --no-sync math-eval nrp-laptop run --model YOUR-MODEL-PVC:exports/model-v1 --pilot
-# After inspecting a successful pilot:
-uv run --no-sync math-eval nrp-laptop run --model YOUR-MODEL-PVC:exports/model-v1
-```
-
-No new namespace roles or service accounts are needed. Your laptop submits the
-GPU Job and waits, then runs Harbor using your existing Kubernetes login. Harbor
-starts isolated CPU task pods on NRP. Keep the laptop awake and connected.
-
-**You do not manually download or upload benchmark datasets.** This mode
-copies the small pinned archive to the laptop automatically so Harbor can upload
-task files, and validates the archive, task inventory, and selected suite hashes.
-It also fetches saved model responses automatically and uploads final reports and
-compressed grading diagnostics to a unique directory under
-`shared-pvc/math-eval/evaluations/`. Model weights stay on NRP.
-
-The fully NRP-managed controller is preserved on `nrp-controller-on-hold`; that
-mode keeps running after the laptop disconnects and requires the dedicated
-namespace roles. It is not started by `nrp-laptop`.
-
-The suite is immutable. Do not edit/regenerate it in place or delete the PVC.
-A new benchmark version needs a new archive, directory, and pinned fingerprints.
-Keep the suite identity and decoding settings fixed when comparing checkpoints.
-Claims cannot be mounted across namespaces; another namespace/cluster needs its
-own prepared storage and profile. Shared storage is not a backup.
+PVCs are namespace-scoped. A different namespace needs accessible model, suite,
+and output storage, plus image-pull credentials. Existing output storage must
+support ReadWriteMany. Keep checkpoint folders immutable once evaluated and use
+a new path for each trained revision.
 
 ## Requested SFT baseline without dataset labels
 
-The current evaluation target is the user's **Qwen3-8B model trained with SFT
-without dataset labels**, published at
+The evaluated baseline is the Qwen3-8B checkpoint identified by its owner as SFT
+without dataset labels, published at
 [Dayallen/WANG_Lab_Baseline_Model](https://huggingface.co/datasets/Dayallen/WANG_Lab_Baseline_Model).
-It is a complete checkpoint stored in a Hugging Face **dataset repository**;
-the `/datasets/` URL does not mean its contents are training questions. The
-training description comes from the user; staging checks the files, not the
-history of the training run.
-
-| Setting | Value |
-| --- | --- |
-| Model PVC / namespace | `math-eval-models` / `wang-research-lab` |
-| Export path relative to PVC root | `Qwen3-8B-SFT-no-labels` |
-| Evaluation model reference | `math-eval-models:Qwen3-8B-SFT-no-labels` |
-| Hugging Face repository type | `dataset` |
-| Pinned source revision | `26519d9bcaaa09e01f53e0046c6811365b1855d4` |
-| Receipt inside the checkpoint folder | `checkpoint-source.json` |
-
-A CPU-only staging Job downloaded the six inference files directly to the PVC:
-`model.safetensors`, `config.json`, `generation_config.json`, `tokenizer.json`,
-`tokenizer_config.json`, and `chat_template.jinja`. It checked file sizes, hashed
-bytes while downloading, verified the repository's SHA-256 values for large
-files, and checked the Qwen3 configuration, safetensors header/bounds, and chat
-template. The complete folder was published only after those checks passed.
-No model inference or GPU evaluation has run for this checkpoint yet.
-
-Run its fourteen-question pilot from an authenticated coordinator:
-
-```bash
-uv run --no-sync math-eval nrp-laptop run \
-  --model math-eval-models:Qwen3-8B-SFT-no-labels --pilot
-```
-
-The pinned source, deployment manifest, complete download log, and receipt are
-saved under ignored `.cache/nrp/sft-baseline-*` in the setup checkout. The
-unchanged official model documented below is a separate comparison checkpoint.
-
-## Official Qwen3-8B baseline storage
-
-A dedicated 100 GiB `ReadWriteMany` model PVC, `math-eval-models`, is available in
-`wang-research-lab` using `rook-cephfs`. The unchanged official baseline is stored
-in its `Qwen3-8B` folder. Teammates do not need to create an export path or download
-this baseline again.
+It is a complete model export in a Hugging Face **dataset repository**. The
+training description is supplied by the owner; file verification does not audit
+training history.
 
 | Setting | Value |
 | --- | --- |
 | Model PVC | `math-eval-models` |
-| Export path relative to PVC root | `Qwen3-8B` |
-| Evaluation model reference | `math-eval-models:Qwen3-8B` |
-| Official source | `Qwen/Qwen3-8B` |
-| Pinned source revision | `b968826d9c46dd6066d109eabc6255188de91218` |
-| Download receipt inside the model folder | `official-source.json` |
+| Export folder | `Qwen3-8B-SFT-no-labels` |
+| Evaluation reference | `math-eval-models:Qwen3-8B-SFT-no-labels` |
+| Source revision | `26519d9bcaaa09e01f53e0046c6811365b1855d4` |
+| Receipt inside export | `checkpoint-source.json` |
+| Weights SHA256 | `b1b8b06061d994944c73f00e80f3fd7b12404d9f4bbe1064a8785678e057206a` |
 
-A CPU-only staging Job downloaded approximately 16.4 GB directly from the
-[official pinned release](https://huggingface.co/Qwen/Qwen3-8B/tree/b968826d9c46dd6066d109eabc6255188de91218).
-It checked all expected file sizes, verified the official SHA-256 hashes for
-large files, and checked that the weight index, Qwen3 configuration, and tokenizer
-chat template were present. Only after verification did it rename the staging
-folder to `Qwen3-8B`. The receipt records the revision and every downloaded file's
-SHA-256 hash. No model weights were loaded and no GPU was used during staging.
-Local manifests, source metadata, download logs, and the verification receipt are
-saved under ignored `.cache/nrp/` in the setup checkout.
+The six required inference files were staged directly to NRP: model weights,
+configuration, generation configuration, tokenizer, tokenizer configuration, and
+chat template. Staging checked sizes, hashes, Qwen3 configuration, and the
+safetensors header before publishing the folder. The full 823-question GPU and
+Harbor evaluation subsequently completed; see [validation](nrp-verification.md).
 
-After completing the README's laptop installation and NRP login, run the real
-fourteen-question pilot with:
+Inside remote tmux:
 
 ```bash
-uv run --no-sync math-eval nrp-laptop run --model math-eval-models:Qwen3-8B --pilot
+evalctl run --model math-eval-models:Qwen3-8B-SFT-no-labels
 ```
 
-This staging check establishes that the baseline files are complete; real GPU
-inference and pilot evaluation still need to pass. Future SFT/GRPO exports can use
-separate folders on this PVC, or their own PVCs. Keep an evaluated model folder
-unchanged and use a different folder for a new checkpoint/revision.
-
-## Optional: download a local copy for manual debugging
-
-Only follow this section for the optional [manual workflow](manual-evaluation.md).
-The `nrp-laptop` command performs its own transfer and does not need this manual step. Skip the download if local
-`load_suite` validation already matches both hashes below. These commands use a separate temporary CPU
-pod mounting only the suite PVC read-only. No model, inference image, registry
-secret, or GPU is needed for this download. They follow NRP's
-[small-file transfer guidance](https://nrp.ai/documentation/userdocs/storage/move-data/);
-the compressed archive is about 0.75 MB.
-
-Run from the repo root after completing tool installation and NRP login. With a
-separate kubeconfig, first re-export `KUBECONFIG` as described in the README.
+This command starts a **new** evaluation. To read the completed baseline instead:
 
 ```bash
-uv sync --locked --extra grading
-mkdir -p .cache/nrp
-export MATH_EVAL_NAMESPACE='wang-research-lab'
-export MATH_EVAL_SUITE_PVC='shared-pvc'
-export MATH_EVAL_SHARED_DOWNLOAD_POD="math-eval-suite-download-$(date -u +%Y%m%d%H%M%S)"
-uv run --no-sync python - <<'PY' > .cache/nrp/shared-suite-download-pod.json
-import json
-import os
-print(json.dumps({
-    'apiVersion': 'v1', 'kind': 'Pod',
-    'metadata': {'name': os.environ['MATH_EVAL_SHARED_DOWNLOAD_POD'],
-                 'namespace': os.environ['MATH_EVAL_NAMESPACE']},
-    'spec': {
-        'restartPolicy': 'Never', 'activeDeadlineSeconds': 1800,
-        'automountServiceAccountToken': False,
-        'affinity': {'nodeAffinity': {'requiredDuringSchedulingIgnoredDuringExecution': {
-            'nodeSelectorTerms': [{'matchExpressions': [{
-                'key': 'feature.node.kubernetes.io/pci-10de.present',
-                'operator': 'NotIn', 'values': ['true'],
-            }]}],
-        }}},
-        'containers': [{
-            'name': 'download', 'image': 'python:3.12-slim',
-            'command': ['python', '-c', 'import time; time.sleep(1800)'],
-            'resources': {
-                'requests': {'cpu': '1', 'memory': '512Mi', 'ephemeral-storage': '1Gi'},
-                'limits': {'cpu': '1', 'memory': '512Mi', 'ephemeral-storage': '1Gi'},
-            },
-            'volumeMounts': [{'name': 'suite', 'mountPath': '/suites', 'readOnly': True}],
-        }],
-        'volumes': [{'name': 'suite', 'persistentVolumeClaim': {
-            'claimName': os.environ['MATH_EVAL_SUITE_PVC'], 'readOnly': True,
-        }}],
-    },
-}, indent=2))
-PY
-kubectl --context nautilus create -f .cache/nrp/shared-suite-download-pod.json
-kubectl --context nautilus -n "$MATH_EVAL_NAMESPACE" wait \
-  --for=condition=Ready "pod/$MATH_EVAL_SHARED_DOWNLOAD_POD" --timeout=10m
-kubectl --context nautilus -n "$MATH_EVAL_NAMESPACE" cp --retries=3 \
-  "$MATH_EVAL_SHARED_DOWNLOAD_POD:/suites/math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz" \
-  .cache/nrp/shared-suites.tgz
+evalctl results math-eval-20261104071253-7a384f
 ```
 
-Check the archive and safely install the local suites. This preserves existing
-matching directories and refuses different ones. It verifies every task file,
-question count, and manifest with the repo's actual suite loader:
+## Official Qwen3-8B comparison checkpoint
 
-```bash
-uv run --no-sync python - <<'PY'
-import hashlib
-from pathlib import Path
-import tarfile
-import tempfile
-from math_eval.suite import load_suite
-archive = Path('.cache/nrp/shared-suites.tgz')
-assert hashlib.sha256(archive.read_bytes()).hexdigest() == '208e3344aaba2a3e1be1fb6edd50eb8a28dd09a32f9213918148b277ecfd5643', 'Archive differs; download again'
-expected = {
-    'math-seven': 'b43163a56bb3944876ec01c781feedb8dcd4fcea74ca1d44491f17cd8c1ad121',
-    'pilot-seven': 'b7a747d5908a0c2436c06c388fde4479816cb80bded0e292a0617123bccd88ce',
-}
-root = Path('suites')
-root.mkdir(exist_ok=True)
-for name, fingerprint in expected.items():
-    destination = root / name
-    if destination.exists():
-        assert load_suite(destination)[2] == fingerprint, f'Existing {destination} differs; preserve it and use a separate checkout'
-with tempfile.TemporaryDirectory(prefix='.shared-download-', dir=root) as temporary:
-    staging = Path(temporary)
-    with tarfile.open(archive, 'r:gz') as packed:
-        packed.extractall(staging, filter='data')
-    for name, fingerprint in expected.items():
-        assert load_suite(staging / name)[2] == fingerprint, f'Invalid extracted suite: {name}'
-    for name in expected:
-        destination = root / name
-        if not destination.exists():
-            (staging / name).rename(destination)
-        manifest, questions, fingerprint = load_suite(destination)
-        print(destination, len(questions), manifest['counts'], 'SHA256:', fingerprint)
-PY
-```
+The separate unchanged official model is already staged on the same 100 GiB
+ReadWriteMany PVC. It has no additional lab training.
 
-Delete only your temporary download pod once the copy succeeds:
+| Setting | Value |
+| --- | --- |
+| Evaluation reference | `math-eval-models:Qwen3-8B` |
+| Source | `Qwen/Qwen3-8B` |
+| Source revision | `b968826d9c46dd6066d109eabc6255188de91218` |
+| Receipt inside export | `official-source.json` |
 
-```bash
-kubectl --context nautilus -n "$MATH_EVAL_NAMESPACE" delete pod \
-  "$MATH_EVAL_SHARED_DOWNLOAD_POD" --wait=true
-```
+The staging job checked all expected files and upstream hashes. This is a
+separate checkpoint from the completed SFT-without-labels baseline; its own real
+GPU evaluation has not been recorded here.
 
-The helper has a 30-minute deadline. If it stops before download finishes, recreate
-it with a new name; the benchmark data remains on the PVC. For pending/image/mount
-errors, use [manual troubleshooting](manual-evaluation.md#troubleshooting). The pod's GPU
-node exclusion follows [NRP's CPU workload guidance](https://nrp.ai/documentation/userdocs/running/cpu-only/).
+## Add another model
+
+Export a complete Hugging Face checkpoint to a PVC accessible in
+`wang-research-lab`. Include full weights or all shards and their index,
+`config.json`, tokenizer files, and a compatible chat template. Merge/export
+adapter-only or optimizer-only training checkpoints before evaluation.
+
+For example, `models-pvc:exports/sft-with-labels` resolves to that folder on
+`models-pvc`. The GPU Job mounts it read-only and loads it directly; no inference
+endpoint is required. Use a distinct folder for SFT with labels, SFT without
+labels, official unchanged weights, and GRPO checkpoints. Keep benchmark and
+decoding settings fixed for comparison.
+
+## Result locations
+
+| Location | Contents |
+| --- | --- |
+| `shared-pvc:math-eval/remote/math-eval-remote-dayallen/runs/EVALUATION-ID/` | Coordinator state, verified suite, responses, reports, and Harbor logs |
+| `shared-pvc:math-eval/evaluations/EVALUATION-ID/` | Original generation and final uploaded report, CSV, metadata, and diagnostics |
+
+The coordinator mounts this PVC at `/state`. Deleting a completed Job or the
+coordinator host does not delete its PVC files. Shared storage is not a backup;
+retain reports and checkpoint receipts according to the lab's data practices.

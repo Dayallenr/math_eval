@@ -72,8 +72,14 @@ def kubectl(args, arguments, document=None):
 def documents(args):
     commit = command(['git', '-C', str(ROOT), 'rev-parse', '--verify', args.commit + '^{commit}'],
                      text=True).strip()
-    snapshot = command(['git', '-C', str(ROOT), 'archive', '--format=tar', commit,
-                        'src/math_eval', 'tests', 'tasks/aime-example/tests/grade.py'])
+    # Older published image commits predate the remote-host scripts. Include
+    # only paths present in that commit, while keeping newer test bundles complete.
+    candidates = ('src/math_eval', 'tests', 'tasks/aime-example', 'scripts',
+                  'pyproject.toml', 'uv.lock', 'README.md', 'nrp.example.toml')
+    tracked = command(['git', '-C', str(ROOT), 'ls-tree', '-r', '--name-only', commit],
+                      text=True).splitlines()
+    paths = [name for name in candidates if any(p == name or p.startswith(name + '/') for p in tracked)]
+    snapshot = command(['git', '-C', str(ROOT), 'archive', '--format=tar', commit, *paths])
     sources = {}
     payload = io.BytesIO()
     with tarfile.open(fileobj=io.BytesIO(snapshot)) as original, \
@@ -84,8 +90,7 @@ def documents(args):
             data = original.extractfile(member).read()
             if member.name.startswith('src/math_eval/'):
                 sources[member.name.removeprefix('src/math_eval/')] = hashlib.sha256(data).hexdigest()
-            else:
-                packed.addfile(member, io.BytesIO(data))
+            packed.addfile(member, io.BytesIO(data))
     if not sources or len(payload.getvalue()) > 700_000:
         raise ValueError('Missing source snapshot or test payload too large for a ConfigMap')
     metadata = {'commit': commit, 'image': args.image, 'sources': sources}

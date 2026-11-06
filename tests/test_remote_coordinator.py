@@ -56,3 +56,48 @@ class RemoteCoordinatorTests(unittest.TestCase):
         self.assertNotIn('nrp.toml', names)
         self.assertFalse(any(n.startswith(('runs/', '.cache/', '.venv/', '.git/')) for n in names))
         self.assertFalse(any('__pycache__' in n for n in names))
+
+    def test_image_verification_bundle_is_self_contained(self):
+        """Image checks must include the source files required by remote-host tests."""
+        import argparse
+        import io
+        import tarfile
+        import tempfile
+        verifier_spec = importlib.util.spec_from_file_location('verify_nrp', ROOT / 'scripts/verify_nrp.py')
+        verifier = importlib.util.module_from_spec(verifier_spec)
+        verifier_spec.loader.exec_module(verifier)
+        args = argparse.Namespace(commit='HEAD', image='registry/runner@sha256:fixture',
+            name='math-eval-verify-fixture', namespace='lab', pull_secret='')
+        # Model Git's archive from a fixture snapshot so this test also runs
+        # in published containers, which deliberately have no .git directory.
+        raw = io.BytesIO()
+        with tarfile.open(fileobj=io.BytesIO(remote.snapshot())) as source, \
+                tarfile.open(fileobj=raw, mode='w') as packed:
+            names = source.getnames()
+            for member in source.getmembers():
+                packed.addfile(member, source.extractfile(member))
+        def git_fixture(command, **kwargs):
+            if 'rev-parse' in command:
+                return 'fixture-commit\n'
+            if 'ls-tree' in command:
+                return '\n'.join(names)
+            if 'archive' in command:
+                return raw.getvalue()
+            raise AssertionError(command)
+        with patch.object(verifier, 'command', side_effect=git_fixture):
+            _, configmap = verifier.documents(args)
+        import base64
+        payload = base64.b64decode(configmap['binaryData']['tests.tar.gz'])
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            with tarfile.open(fileobj=io.BytesIO(payload)) as packed:
+                packed.extractall(directory, filter='data')
+            bundled_spec = importlib.util.spec_from_file_location('bundled_remote', directory / 'scripts/remote_coordinator.py')
+            bundled = importlib.util.module_from_spec(bundled_spec)
+            bundled_spec.loader.exec_module(bundled)
+            with tarfile.open(fileobj=io.BytesIO(bundled.snapshot())) as packed:
+                names = packed.getnames()
+            self.assertIn('src/math_eval/laptop.py', names)
+            self.assertIn('uv.lock', names)
+            self.assertIn('tasks/aime-example/tests/grade.py', names)
+            self.assertNotIn('nrp.toml', names)

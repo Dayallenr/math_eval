@@ -1,6 +1,7 @@
 # Published lab images: copy to nrp.toml (ignored by Git).
-# These digests passed CPU/Harbor checks. A real model GPU pilot is still required.
-# nrp-laptop uses your login; the service_account fields apply only to the NRP controller mode.
+# These digests completed the 823-question baseline evaluation; see docs/nrp-verification.md.
+# The remote tmux coordinator uses your login. Legacy service-account fields remain
+# for compatibility with pinned images/saved requests; no setup/RBAC command is required.
 context = "nautilus"
 namespace = "wang-research-lab"
 image = "gitlab-registry.nrp-nautilus.io/dayallen/model-eval/math-eval@sha256:386537c9ee80c892ce19984508b48f443c57481ef650b91c5428a1d5e9ca7b42"
@@ -14,7 +15,7 @@ model_pvc = ""
 suite_pvc = "shared-pvc"
 output_pvc = "shared-pvc" # Must support ReadWriteMany.
 output_relative_path = "math-eval/evaluations"
-# Pinned archive already uploaded to shared-pvc; no dataset downloads per laptop.
+# Pinned archive already on shared-pvc; no repeated dataset upload for a new model.
 suite_archive = "math-eval/archives/math-seven-b43163a56bb3-pilot-b7a747d5908a.tgz"
 archive_sha256 = "208e3344aaba2a3e1be1fb6edd50eb8a28dd09a32f9213918148b277ecfd5643"
 full_suite = "math-seven"

@@ -1,7 +1,7 @@
 # Run the evaluation in remote tmux on NRP
 
 This uses the existing `nrp-laptop` coordinator **inside an NRP CPU pod**. The CLI
-name is historical: no evaluation process needs to keep running on your laptop.
+name is retained for compatibility: no evaluation process needs to keep running on your laptop.
 The CPU coordinator submits GPU generation, waits for it to finish, then runs
 Harbor grading in isolated NRP CPU pods and uploads the reports. It adds no Roles,
 RoleBindings, or ServiceAccounts. It authenticates using your own NRP account.
@@ -14,7 +14,7 @@ Remove it when your evaluations are finished.
 
 ## 1. Prepare or inspect the host from your laptop
 
-Run these commands from this repository on branch `laptop-orchestration`, with
+Run these commands from the repository root, with
 `nrp.toml` configured and your normal working `kubectl` login. The helper uses
 Python 3.12 or later; the existing `.venv/bin/python` meets this requirement.
 
@@ -143,14 +143,32 @@ new run:
 
 ```bash
 evalctl resume EVALUATION-ID
-# If a grading attempt failed and must be retried:
+# Broad retry: preserves the prior attempt and regrades all saved answers.
 evalctl resume EVALUATION-ID --retry-grading
 ```
 
 Tmux cannot survive deletion or replacement of its own pod. Recreate the host if
 needed, log in again, attach, and resume using the same workspace. GPU job and
 saved-answer recovery prevent a second GPU run for the same saved request.
-If grading was interrupted, use `--retry-grading`. An interrupted generation job
+For an isolated infrastructure error in an otherwise completed grading run,
+Harbor supports a targeted retry:
+
+```bash
+python -m harbor.cli.main jobs resume \
+  -p /state/math-eval/remote/math-eval-remote-dayallen/runs/EVALUATION-ID/run/grading/BENCHMARK \
+  -f RuntimeError
+```
+
+This removes matching failed trials, so first preserve their directories and
+stop other coordinators for that evaluation. It retains completed Harbor trials.
+It does **not** rebuild `summary.json`, update coordinator state, or upload the
+final reports by itself. A maintainer must validate saved predictions, aggregate
+all Harbor results, and finish the coordinator's reporting/upload phase; do not
+mark an evaluation complete by editing JSON. The completed baseline's recovery
+receipt records that procedure. Use the broad retry when a full preserved regrade
+is acceptable.
+
+An interrupted generation job
 that actually failed needs investigation; resume does not silently replace it.
 
 To stop an evaluation intentionally, interrupt its coordinator with Ctrl-c, then
@@ -167,3 +185,23 @@ them. Removing the host alone does not cancel a running GPU job. PVCs, model
 files, and saved results are retained. `create` refuses to replace an existing
 host; after changing source or configuration, finish or stop active work before
 recreating it. Do not delete the shared PVCs as part of coordinator cleanup.
+
+## Terminal and progress tips
+
+Use **Ctrl-b then w** to select a tmux window, **Ctrl-b then c** to create one,
+and **Ctrl-b then [** to enter scrollback (press **q** to leave). To enable mouse
+scrolling, run `tmux set -g mouse on` in a separate idle window. Do not type
+shell commands into the window occupied by an active coordinator.
+
+The coordinator prints phase changes rather than every model answer. To inspect
+generation progress from the laptop:
+
+```bash
+kubectl --context nautilus -n wang-research-lab logs job/EVALUATION-ID-generate --tail=10
+kubectl --context nautilus -n wang-research-lab get pods -l math-eval/evaluation=EVALUATION-ID
+```
+
+Pod AGE includes scheduling wait. Container start time describes actual runtime.
+A connection/attachment error alone does not mean the evaluation failed: inspect
+`status` and worker logs before submitting a second run. If the session was
+interrupted, resume its existing evaluation ID.

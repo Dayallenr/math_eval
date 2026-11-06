@@ -1,8 +1,7 @@
 # Benchmark selection
 
-The active suite uses all questions from the seven benchmarks named in the supplied screenshot.
-It excludes OlympiadBench and OlymMATH English EASY. The screenshot samples 20 questions
-per benchmark; those sample identities are not used here because the requested scope is the full releases.
+The suite contains all questions from seven pinned public benchmark releases.
+OlymMATH uses English HARD only. Exact revisions and selections are listed below.
 
 | Benchmark | Publisher release | Selection | Questions | Pinned revision |
 | --- | --- | --- | ---: | --- |
@@ -26,7 +25,7 @@ AIME answers use exact integer comparison in 0–999. BeyondAIME uses exact inte
 comparison without that range restriction. Other math answers use the pinned Math-Verify scorer.
 Saved answers that hit the generation limit remain in the overall accuracy denominator;
 the report records length-limited responses separately. Merely matching the benchmark
-selection does not reproduce the screenshot’s sampling, prompting, or scoring protocol.
+selection does not reproduce another evaluation’s sampling, prompting, or scoring protocol.
 
 The old five-benchmark suite remains on NRP for historical runs. Its scores must be
 identified by their original suite fingerprint when compared with new runs.
